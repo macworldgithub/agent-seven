@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const sizes: Record<string, number> = {
@@ -12,7 +13,7 @@ const sizes: Record<string, number> = {
   lg: 28,
 };
 
-export function Spinner({ size = 'md', className }: SpinnerProps) {
+export function Spinner({ size = 'md', className, style }: SpinnerProps) {
   const px = sizes[size];
   const radius = (px - 4) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -25,7 +26,7 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
       viewBox={`0 0 ${px} ${px}`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      style={{ flexShrink: 0 }}
+      style={{ flexShrink: 0, ...style }}
     >
       <circle
         cx={px / 2}
