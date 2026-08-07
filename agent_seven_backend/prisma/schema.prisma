@@ -1,0 +1,340 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum WorkspaceProvider {
+  GOOGLE
+  SLACK
+  MICROSOFT
+  XERO
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  ERROR
+}
+
+enum Permission {
+  READ_EMAIL
+  DRAFT_EMAIL
+  SEND_EMAIL
+  SEND_EMAIL_WITH_APPROVAL
+  CALENDAR_READ
+  CALENDAR_WRITE
+  DRIVE_READ
+  DRIVE_WRITE
+  SLACK_READ
+  SLACK_SEND
+}
+
+enum AgentStatus {
+  IDLE
+  THINKING
+  EXECUTING
+  ERROR
+}
+
+enum MemoryType {
+  CONVERSATION
+  DECISION
+  ACTION_ITEM
+  STAKEHOLDER
+  KNOWLEDGE_SNIPPET
+  ACTIVITY_LOG
+}
+
+enum ActionItemStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum BillingPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  TRIALING
+}
+
+model Tenant {
+  id                   String             @id @default(uuid())
+  name                 String
+  slug                 String             @unique
+  encryptionKey        String
+  plan                 BillingPlan        @default(FREE)
+  subscriptionStatus   SubscriptionStatus @default(TRIALING)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  users         User[]
+  workspaces    Workspace[]
+  agents        Agent[]
+  memories      Memory[]
+  auditLogs     AuditLog[]
+  sessions      Session[]
+  conversations Conversation[]
+  actionItems   ActionItem[]
+  toolCalls     ToolCall[]
+  usageRecords  UsageRecord[]
+  messages      Message[]
+  oauthStates   OAuthState[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String
+  email        String    @unique
+  passwordHash String?
+  name         String
+  googleId     String?   @unique
+  avatar       String?
+  isOrgAdmin   Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions      Session[]
+  conversations Conversation[]
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  tenantId         String
+  token            String   @unique
+  refreshToken     String   @unique
+  expiresAt        DateTime
+  refreshExpiresAt DateTime
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Workspace {
+  id                   String            @id @default(uuid())
+  tenantId             String
+  name                 String
+  provider             WorkspaceProvider
+  status               WorkspaceStatus   @default(ACTIVE)
+  providerAccountId    String
+  providerEmail        String?
+  accessToken          String
+  refreshToken         String?
+  tokenExpiresAt       DateTime?
+  isDefault            Boolean           @default(false)
+  lastSuccessfulCallAt DateTime?
+  permissions          Permission[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  toolCalls   ToolCall[]
+  oauthStates OAuthState[]
+
+  @@index([tenantId])
+  @@index([tenantId, provider])
+}
+
+model OAuthState {
+  id           String            @id @default(uuid())
+  tenantId     String
+  workspaceId  String?
+  state        String            @unique
+  provider     WorkspaceProvider
+  codeVerifier String?
+  expiresAt    DateTime
+  used         Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Agent {
+  id                      String      @id @default(uuid())
+  tenantId                String
+  name                    String
+  spokenName              String
+  systemPromptAppendix    String?     @db.Text
+  personalityPreset       String      @default("professional")
+  status                  AgentStatus @default(IDLE)
+  morningBriefingEnabled  Boolean     @default(true)
+  morningBriefingTime     String      @default("08:00")
+  morningBriefingTimezone String      @default("Australia/Sydney")
+  driftDetectionEnabled   Boolean     @default(false)
+  replyTrackingEnabled    Boolean     @default(false)
+  watchlistEnabled        Boolean     @default(false)
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  toolCalls     ToolCall[]
+  memories      Memory[]
+  actionItems   ActionItem[]
+
+  @@index([morningBriefingEnabled])
+  @@index([tenantId])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  tenantId  String
+  agentId   String
+  userId    String
+  title     String?
+  summary   String?  @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent    Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  tenantId       String
+  conversationId String
+  role           MessageRole
+  content        String      @db.Text
+  toolCallsJson  String?     @db.Text
+  tokensUsed     Int?
+  modelUsed      String?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+model Memory {
+  id          String     @id @default(uuid())
+  tenantId    String
+  agentId     String
+  workspaceId String?
+  type        MemoryType
+  title       String
+  content     String     @db.Text
+  sourceRef   String?
+  tags        String[]
+  isVerified  Boolean    @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent  Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, agentId])
+  @@index([type])
+}
+
+model ActionItem {
+  id          String           @id @default(uuid())
+  tenantId    String
+  agentId     String
+  memoryId    String?
+  title       String
+  description String?          @db.Text
+  status      ActionItemStatus @default(OPEN)
+  dueAt       DateTime?
+  completedAt DateTime?
+  sourceRef   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent  Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model ToolCall {
+  id           String   @id @default(uuid())
+  tenantId     String
+  agentId      String
+  workspaceId  String?
+  toolName     String
+  inputJson    String   @db.Text
+  outputJson   String?  @db.Text
+  success      Boolean
+  errorMessage String?
+  durationMs   Int?
+  modelUsed    String?
+  createdAt    DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent     Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, agentId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  tenantId     String
+  userId       String?
+  action       String
+  resourceType String?
+  resourceId   String?
+  metaJson     String?  @db.Text
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+model UsageRecord {
+  id               String   @id @default(uuid())
+  tenantId         String
+  periodStart      DateTime
+  periodEnd        DateTime
+  toolCallCount    Int      @default(0)
+  llmTokensUsed    Int      @default(0)
+  voiceMinutesUsed Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}

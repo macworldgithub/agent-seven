@@ -1,0 +1,39 @@
+git check-ignore -v .\agent_seven_backend\.env# Dependencies
+**/node_modules/
+
+# Build output
+**/dist/
+**/dist-ssr/
+
+# Environment variables
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Prisma generated files
+**/generated/prisma/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# TypeScript
+**/*.tsbuildinfo
+
+ngrok_output.txt
+
+# AI / IDE generated files
+**/.agents/
+**/.claude/
+**/.windsurf/
+
+# Scratch / temporary files
+**/scratch_dump.*

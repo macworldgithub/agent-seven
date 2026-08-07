@@ -1,0 +1,274 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN SYSTEM — CSS CUSTOM PROPERTIES
+   ============================================================ */
+:root {
+  /* Colors */
+  --color-bg: #0A0B0F;
+  --color-surface: #111318;
+  --color-surface-2: #1A1D26;
+  --color-surface-3: #222632;
+  --color-border: #2A2D3A;
+  --color-border-light: #353849;
+  --color-brand: #6366F1;
+  --color-brand-light: #818CF8;
+  --color-brand-dim: rgba(99, 102, 241, 0.12);
+  --color-accent: #10B981;
+  --color-accent-dim: rgba(16, 185, 129, 0.12);
+  --color-warning: #F59E0B;
+  --color-warning-dim: rgba(245, 158, 11, 0.12);
+  --color-danger: #EF4444;
+  --color-danger-dim: rgba(239, 68, 68, 0.12);
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+
+  /* Typography */
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* Font Sizes */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-brand: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 0 20px rgba(99, 102, 241, 0.1);
+}
+
+/* ============================================================
+   GLOBAL RESETS
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-light);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+::selection {
+  background: var(--color-brand-dim);
+  color: var(--color-brand-light);
+}
+
+/* ============================================================
+   ANIMATIONS / KEYFRAMES
+   ============================================================ */
+@keyframes pulse-glow {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes bounce-dot {
+  0%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes spin-stroke {
+  0% { stroke-dashoffset: 60; }
+  50% { stroke-dashoffset: 15; }
+  100% { stroke-dashoffset: 60; }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   ANIMATION UTILITY CLASSES
+   ============================================================ */
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite alternate;
+}
+
+.animate-bounce-dot {
+  animation: bounce-dot 1.4s ease-in-out infinite;
+}
+
+.animate-scale-in {
+  animation: scale-in 150ms ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slide-in-left 200ms ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============================================================
+   FOCUS STYLES
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   FORM ELEMENT RESETS (for native select/textarea)
+   ============================================================ */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+textarea {
+  resize: none;
+}
+
+/* Placeholder colors */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+/* Select option colors */
+option {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+
+/* ============================================================
+   UTILITY: FONT MONO
+   ============================================================ */
+.font-mono {
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   GRID PATTERN (used in auth pages)
+   ============================================================ */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center center;
+}
