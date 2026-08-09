@@ -128,7 +128,7 @@ export const llmService = {
 
     return {
       content: choice.content ?? null,
-      tool_calls: (choice.tool_calls ?? []).map(tc => ({
+      tool_calls: (choice.tool_calls ?? []).map((tc: any) => ({
         type: 'tool_use' as const,
         id: tc.id,
         name: tc.function.name,

@@ -122,3 +122,7 @@ Summarise concisely. Flag urgent items. Format for voice delivery.`;
 briefingWorker.on('failed', (job, err) => {
   logger.error(`Briefing job ${job?.id} failed with error ${err.message}`);
 });
+
+briefingWorker.on('error', (err) => {
+  logger.error(`Briefing worker error: ${err.message}`);
+});

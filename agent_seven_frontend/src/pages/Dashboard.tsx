@@ -6,6 +6,7 @@ import { useConversations } from '../hooks/useAgent';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { agentService } from '../services/agent.service';
 import api from '../lib/axios';
 import {
   MessageSquare,
@@ -76,6 +77,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
+  const [isFreePlan, setIsFreePlan] = useState(false);
 
   useEffect(() => {
     api.get('/memory/action-items?status=OPEN')
@@ -85,6 +87,10 @@ export function Dashboard() {
     api.get('/memory/summary')
       .then(res => setMemoriesCount(res.data.data?.total || res.data?.total || 0))
       .catch(err => console.error('Failed to fetch memory summary', err));
+
+    agentService.getSubscription()
+      .then(sub => setIsFreePlan(sub.plan === 'FREE'))
+      .catch(err => console.error('Failed to fetch subscription', err));
   }, []);
 
   const firstName = user?.name?.split(' ')[0] || 'there';
@@ -94,6 +100,18 @@ export function Dashboard() {
       className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto animate-fade-in"
       style={{ minHeight: 'calc(100vh - 64px)' }}
     >
+      {isFreePlan && (
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 flex items-center justify-between mb-6">
+          <div>
+            <p className="text-sm font-medium text-warning">You're on the free plan</p>
+            <p className="text-xs text-muted">Limited to 20 AI actions per day</p>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => navigate('/billing')}>
+            Upgrade Now
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <h2

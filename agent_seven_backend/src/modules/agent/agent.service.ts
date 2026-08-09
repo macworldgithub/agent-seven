@@ -10,6 +10,7 @@ import { slackListChannels, slackGetMessages, slackSendMessage } from '../../ser
 import { memorySearch, memorySave, getActionItems, saveActionItem } from '../../services/tools/memory.tools';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { memoryService } from '../memory/memory.service';
+import { billingService } from '../billing/billing.service';
 
 export const agentService = {
   async getOrCreateAgent(tenantId: string): Promise<Agent> {
@@ -406,6 +407,15 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
   async runAgentLoop(params: { tenantId: string, userId: string, conversationId: string | null, userMessage: string, stream?: boolean, onChunk?: (chunk: string) => void }): Promise<{ response: string, conversationId: string, toolCallsMade: string[] }> {
     const { tenantId, userId, userMessage, stream, onChunk } = params;
     
+    const { allowed, reason } = await billingService.checkUsageLimits(tenantId);
+    if (!allowed) {
+      return {
+        response: `⚠️ ${reason} Visit your billing page to upgrade.`,
+        conversationId: params.conversationId || '',
+        toolCallsMade: []
+      };
+    }
+
     // 1. Get agent + tenant + workspaces
     const agent = await this.getOrCreateAgent(tenantId);
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
@@ -511,6 +521,7 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
         for (const toolCall of responseMessage.tool_calls) {
           toolCallsMade.push(toolCall.name);
           const toolRes = await this.executeTool(toolCall.name, toolCall.input, tenantId, agent.id);
+          await billingService.incrementUsage(tenantId, 1);
           toolResultsContent.push({
             type: 'tool_result',
             tool_use_id: toolCall.id,

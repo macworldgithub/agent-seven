@@ -2,6 +2,62 @@ import { Request, Response } from 'express';
 import { billingService } from './billing.service';
 
 export const billingController = {
+  async getPlans(req: Request, res: Response) {
+    try {
+      const plans = [
+        {
+          id: 'STARTER',
+          name: 'Starter',
+          price: 29,
+          interval: 'month',
+          features: [
+            '200 AI actions per day',
+            'Up to 3 workspaces',
+            'Gmail, Calendar, Drive, Slack',
+            'Memory & action items',
+            'Morning briefing',
+            'Email support'
+          ],
+          limits: { toolCallsPerDay: 200, workspaces: 3 }
+        },
+        {
+          id: 'PRO',
+          name: 'Pro',
+          price: 79,
+          interval: 'month',
+          features: [
+            '1,000 AI actions per day',
+            'Up to 10 workspaces',
+            'Everything in Starter',
+            'Voice interface',
+            'Priority support',
+            'Advanced memory'
+          ],
+          limits: { toolCallsPerDay: 1000, workspaces: 10 }
+        },
+        {
+          id: 'ENTERPRISE',
+          name: 'Enterprise',
+          price: 199,
+          interval: 'month',
+          features: [
+            'Unlimited AI actions',
+            'Unlimited workspaces',
+            'Everything in Pro',
+            'Custom integrations',
+            'Dedicated support',
+            'SLA guarantee'
+          ],
+          limits: { toolCallsPerDay: 999999, workspaces: 999 }
+        }
+      ];
+      res.json({ success: true, data: plans });
+    } catch (err: any) {
+      console.error('Error in getPlans:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
   async getSubscription(req: Request, res: Response) {
     try {
       const { tenantId } = req.user!;

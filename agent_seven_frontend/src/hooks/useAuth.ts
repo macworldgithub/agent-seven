@@ -45,9 +45,9 @@ export function useAuth() {
   });
 
   return {
-    user,
-    tenant,
-    agent,
+    user: meQuery.data?.user || user,
+    tenant: meQuery.data?.tenant || tenant,
+    agent: meQuery.data?.agent || agent,
     isAuthenticated,
     login: loginMutation.mutate,
     isLoggingIn: loginMutation.isPending,

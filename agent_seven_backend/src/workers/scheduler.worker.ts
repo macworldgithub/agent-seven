@@ -118,3 +118,7 @@ export const schedulerWorker = new Worker<SchedulerJobData>(
 schedulerWorker.on('failed', (job, err) => {
   logger.error(`Scheduler job ${job?.id} failed with error ${err.message}`);
 });
+
+schedulerWorker.on('error', (err) => {
+  logger.error(`Scheduler worker error: ${err.message}`);
+});

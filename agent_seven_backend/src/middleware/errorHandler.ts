@@ -22,10 +22,11 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     message = 'Unauthorized: Invalid or expired token';
   }
 
+  const isDev = process.env.NODE_ENV === 'development' || env.NODE_ENV === 'development';
   res.status(statusCode).json({
     success: false,
     error: message,
     code,
-    ...(env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(isDev && { stack: err.stack })
   });
 };

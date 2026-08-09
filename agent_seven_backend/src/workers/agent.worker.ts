@@ -39,3 +39,7 @@ export const agentWorker = new Worker<AgentJobData>(
 agentWorker.on('failed', (job, err) => {
   logger.error(`Agent job ${job?.id} failed with error ${err.message}`);
 });
+
+agentWorker.on('error', (err) => {
+  logger.error(`Agent worker error: ${err.message}`);
+});

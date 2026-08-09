@@ -10,6 +10,9 @@ import { WorkspaceSettings } from './pages/WorkspaceSettings';
 import { AgentChat } from './components/agent/AgentChat';
 import { MemoryPage } from './pages/Memory';
 import { ActionItemsPage } from './pages/ActionItems';
+import { Billing } from './pages/Billing';
+import { BillingSuccess } from './pages/BillingSuccess';
+import { BillingCancel } from './pages/BillingCancel';
 import { useAuth } from './hooks/useAuth';
 import { AuthCallback } from './pages/AuthCallback';
 import './App.css';
@@ -34,6 +37,9 @@ function App() {
         <Route path="/agent" element={<AgentConfig />} />
         <Route path="/memory" element={<MemoryPage />} />
         <Route path="/actions" element={<ActionItemsPage />} />
+        <Route path="/billing" element={<Billing />} />
+        <Route path="/billing/success" element={<BillingSuccess />} />
+        <Route path="/billing/cancel" element={<BillingCancel />} />
       </Route>
     </Routes>
   );

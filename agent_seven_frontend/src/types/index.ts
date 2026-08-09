@@ -115,3 +115,27 @@ export interface AuthResponse {
   tenant: Tenant;
   agent: Agent;
 }
+
+export interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  interval: string;
+  features: string[];
+  limits: { toolCallsPerDay: number, workspaces: number };
+}
+
+export interface Subscription {
+  plan: string;
+  status: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface Usage {
+  toolCallCount: number;
+  llmTokensUsed: number;
+  voiceMinutesUsed: number;
+  periodStart: string;
+  periodEnd: string;
+}

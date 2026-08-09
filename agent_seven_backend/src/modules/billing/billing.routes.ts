@@ -7,6 +7,9 @@ const router = Router();
 // Webhook for Stripe signature validation. No auth middleware.
 router.post('/webhook', billingController.handleWebhook);
 
+// Public routes
+router.get('/plans', billingController.getPlans);
+
 // Protected routes
 router.use(authenticate);
 router.get('/subscription', billingController.getSubscription);

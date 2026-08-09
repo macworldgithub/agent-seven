@@ -11,6 +11,7 @@ import {
   LogOut,
   X,
   Menu,
+  CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
@@ -25,6 +26,7 @@ const navMain = [
 const navSettings = [
   { name: 'Action Items', href: '/actions', icon: CheckSquare },
   { name: 'Settings', href: '/agent', icon: Settings },
+  { name: 'Billing', href: '/billing', icon: CreditCard },
 ];
 
 interface SidebarProps {

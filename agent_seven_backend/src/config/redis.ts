@@ -3,14 +3,19 @@ import { env } from './env';
 import { logger } from '../utils/logger';
 
 export const redis = new Redis(env.REDIS_URL, {
-  retryStrategy(times) {
-    if (times > 3) {
-      logger.warn('Redis connection failed after 3 attempts. Stopping retries.');
-      return null;
-    }
-    return Math.min(times * 1000, 3000);
+  maxRetriesPerRequest: 3,
+  retryStrategy: (times) => {
+    if (times > 3) return null;
+    return Math.min(times * 200, 2000);
   },
-  maxRetriesPerRequest: null,
+  reconnectOnError: (err) => {
+    const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
+    return targetErrors.some(e => err.message.includes(e));
+  },
+  enableOfflineQueue: false,
+  connectTimeout: 10000,
+  lazyConnect: false,
+  keepAlive: 10000
 });
 
 redis.on('connect', () => {

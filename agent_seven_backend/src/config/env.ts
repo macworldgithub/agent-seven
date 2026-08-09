@@ -14,6 +14,9 @@ export const env = {
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY as string,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET as string,
+  STRIPE_PRICE_STARTER: process.env.STRIPE_PRICE_STARTER as string,
+  STRIPE_PRICE_PRO: process.env.STRIPE_PRICE_PRO as string,
+  STRIPE_PRICE_ENTERPRISE: process.env.STRIPE_PRICE_ENTERPRISE as string,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID as string,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET as string,
   GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI as string,
@@ -35,6 +38,9 @@ const requiredEnvs = [
   'ELEVENLABS_API_KEY',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_PRICE_STARTER',
+  'STRIPE_PRICE_PRO',
+  'STRIPE_PRICE_ENTERPRISE',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'GOOGLE_REDIRECT_URI',
@@ -44,10 +50,16 @@ const requiredEnvs = [
   'ENCRYPTION_KEY',
 ];
 
-for (const key of requiredEnvs) {
-  if (process.env[key] === undefined) {
-    throw new Error(`Missing required environment variable: ${key}`);
+try {
+  for (const key of requiredEnvs) {
+    if (process.env[key] === undefined) {
+      console.error(`Missing required environment variable: ${key}`);
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
   }
+} catch (error) {
+  console.error("Environment validation failed:", error);
+  throw error;
 }
 
 if (env.ENCRYPTION_KEY && env.ENCRYPTION_KEY.length !== 32) {

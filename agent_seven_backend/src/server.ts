@@ -18,7 +18,9 @@ const startServer = async () => {
 
     // Start workers (only in non-test environment)
     if (env.NODE_ENV !== 'test') {
-      import('./workers/index');
+      import('./workers/index').catch(err => {
+        logger.error(`Worker startup failed: ${err}`);
+      })
     }
 
     const gracefulShutdown = async () => {

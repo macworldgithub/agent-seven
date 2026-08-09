@@ -79,7 +79,10 @@ export class AuthService {
   static async login(data: { email: string; password?: string }) {
     const { email, password } = data;
 
-    const user = await prisma.user.findUnique({ where: { email }, include: { tenant: true } });
+    const user = await prisma.user.findUnique({ 
+      where: { email }, 
+      include: { tenant: { include: { agents: true } } } 
+    });
     if (!user) {
       throw new Error('User not found');
     }
@@ -120,7 +123,13 @@ export class AuthService {
       },
     });
 
-    return { user, tenant: user.tenant, accessToken, refreshToken };
+    return { 
+      user, 
+      tenant: user.tenant, 
+      agent: user.tenant.agents?.[0] || null,
+      accessToken, 
+      refreshToken 
+    };
   }
 
   static async refreshToken(oldRefreshToken: string) {
@@ -204,6 +213,12 @@ export class AuthService {
     if (!user) throw new Error('User not found');
 
     const { passwordHash, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const { tenant, ...userRest } = userWithoutPassword;
+
+    return {
+      user: userRest,
+      tenant,
+      agent: tenant.agents?.[0] || null,
+    };
   }
 }

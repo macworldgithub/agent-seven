@@ -1,8 +1,9 @@
 import Stripe from 'stripe';
 import { prisma } from '../../config/db';
+import { env } from '../../config/env';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-06-20' as any,
+const stripe = new Stripe(env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2025-06-30.basil' as any,
 });
 
 export const billingService = {
@@ -33,10 +34,13 @@ export const billingService = {
   async createCheckoutSession(tenantId: string, plan: 'STARTER' | 'PRO' | 'ENTERPRISE'): Promise<{ url: string }> {
     const customerId = await this.getOrCreateStripeCustomer(tenantId);
     
-    let priceId = '';
-    if (plan === 'STARTER') priceId = process.env.STRIPE_PRICE_STARTER || '';
-    if (plan === 'PRO') priceId = process.env.STRIPE_PRICE_PRO || '';
-    if (plan === 'ENTERPRISE') priceId = process.env.STRIPE_PRICE_ENTERPRISE || '';
+    const PRICE_IDS = {
+      STARTER: env.STRIPE_PRICE_STARTER,
+      PRO: env.STRIPE_PRICE_PRO,
+      ENTERPRISE: env.STRIPE_PRICE_ENTERPRISE
+    };
+
+    const priceId = PRICE_IDS[plan];
 
     if (!priceId) throw new Error('Price ID not configured for plan');
 
@@ -44,8 +48,8 @@ export const billingService = {
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.FRONTEND_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/billing`,
+      success_url: `${env.FRONTEND_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.FRONTEND_URL}/billing`,
       metadata: { tenantId }
     });
 
@@ -53,18 +57,51 @@ export const billingService = {
     return { url: session.url };
   },
 
+  getPlanLimits(plan: string) {
+    const PLAN_LIMITS: Record<string, { toolCallsPerDay: number, workspaces: number }> = {
+      FREE: { toolCallsPerDay: 20, workspaces: 1 },
+      STARTER: { toolCallsPerDay: 200, workspaces: 3 },
+      PRO: { toolCallsPerDay: 1000, workspaces: 10 },
+      ENTERPRISE: { toolCallsPerDay: 999999, workspaces: 999 }
+    };
+    return PLAN_LIMITS[plan] || PLAN_LIMITS['FREE'];
+  },
+
+  async checkUsageLimits(tenantId: string): Promise<{ allowed: boolean, reason?: string }> {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) return { allowed: false, reason: 'Tenant not found' };
+
+    const limits = this.getPlanLimits(tenant.plan);
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const toolCallsToday = await prisma.toolCall.count({
+      where: {
+        tenantId,
+        createdAt: { gte: startOfDay }
+      }
+    });
+
+    if (toolCallsToday >= limits.toolCallsPerDay) {
+      return { allowed: false, reason: 'Daily tool call limit reached. Upgrade your plan.' };
+    }
+
+    return { allowed: true };
+  },
+
   async createBillingPortalSession(tenantId: string): Promise<{ url: string }> {
     const customerId = await this.getOrCreateStripeCustomer(tenantId);
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.FRONTEND_URL}/billing`
+      return_url: `${env.FRONTEND_URL}/billing`
     });
 
     return { url: session.url };
   },
 
   async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+    const webhookSecret = env.STRIPE_WEBHOOK_SECRET || '';
     let event: Stripe.Event;
 
     try {
@@ -198,7 +235,7 @@ export const billingService = {
     };
   },
 
-  async recordUsage(tenantId: string, data: { toolCalls?: number, tokens?: number, voiceMinutes?: number }): Promise<void> {
+  async incrementUsage(tenantId: string, toolCalls?: number, tokens?: number, voiceMinutes?: number): Promise<void> {
     const now = new Date();
     let usage = await prisma.usageRecord.findFirst({
       where: {
@@ -219,9 +256,9 @@ export const billingService = {
     await prisma.usageRecord.update({
       where: { id: usage.id },
       data: {
-        toolCallCount: { increment: data.toolCalls || 0 },
-        llmTokensUsed: { increment: data.tokens || 0 },
-        voiceMinutesUsed: { increment: data.voiceMinutes || 0 }
+        toolCallCount: { increment: toolCalls || 0 },
+        llmTokensUsed: { increment: tokens || 0 },
+        voiceMinutesUsed: { increment: voiceMinutes || 0 }
       }
     });
   }
