@@ -54,8 +54,9 @@ export const agentService = {
   },
 
   buildSystemPrompt(agent: Agent, tenant: Tenant, workspaces: Workspace[]): string {
-    const now = new Date().toLocaleString('en-AU', { 
-      timeZone: agent.morningBriefingTimezone || 'Australia/Sydney',
+    const timeZone = agent.morningBriefingTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const now = new Date().toLocaleString('en-US', { 
+      timeZone,
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 
@@ -246,7 +247,7 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
             description: 'Create a calendar event',
             input_schema: {
               type: 'object',
-              properties: { workspaceId: { type: 'string', description: 'The workspace UUID (not email) from the connected workspaces list' }, summary: { type: 'string' }, description: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, attendees: { type: 'array', items: { type: 'string' } } },
+              properties: { workspaceId: { type: 'string', description: 'The workspace UUID (not email) from the connected workspaces list' }, summary: { type: 'string' }, description: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, timeZone: { type: 'string', description: 'IANA Timezone (e.g. Asia/Karachi)' }, attendees: { type: 'array', items: { type: 'string' } } },
               required: ['workspaceId', 'summary', 'start', 'end']
             }
           });
@@ -255,7 +256,7 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
             description: 'Update a calendar event',
             input_schema: {
               type: 'object',
-              properties: { workspaceId: { type: 'string', description: 'The workspace UUID (not email) from the connected workspaces list' }, eventId: { type: 'string' }, summary: { type: 'string' }, description: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' } },
+              properties: { workspaceId: { type: 'string', description: 'The workspace UUID (not email) from the connected workspaces list' }, eventId: { type: 'string' }, summary: { type: 'string' }, description: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, timeZone: { type: 'string', description: 'IANA Timezone (e.g. Asia/Karachi)' } },
               required: ['workspaceId', 'eventId']
             }
           });

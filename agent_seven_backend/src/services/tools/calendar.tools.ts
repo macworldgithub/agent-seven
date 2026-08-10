@@ -42,7 +42,7 @@ export async function calendarGetEvent(accessToken: string, input: { eventId: st
   return res.data;
 }
 
-export async function calendarCreateEvent(accessToken: string, input: { summary: string, description?: string, start: string, end: string, attendees?: string[] }): Promise<any> {
+export async function calendarCreateEvent(accessToken: string, input: { summary: string, description?: string, start: string, end: string, timeZone?: string, attendees?: string[] }): Promise<any> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   const calendar = google.calendar({ version: 'v3', auth });
@@ -50,8 +50,8 @@ export async function calendarCreateEvent(accessToken: string, input: { summary:
   const requestBody: any = {
     summary: input.summary,
     description: input.description,
-    start: { dateTime: new Date(input.start).toISOString() },
-    end: { dateTime: new Date(input.end).toISOString() }
+    start: input.timeZone ? { dateTime: new Date(input.start).toISOString(), timeZone: input.timeZone } : { dateTime: new Date(input.start).toISOString() },
+    end: input.timeZone ? { dateTime: new Date(input.end).toISOString(), timeZone: input.timeZone } : { dateTime: new Date(input.end).toISOString() }
   };
 
   if (input.attendees && input.attendees.length > 0) {
@@ -72,7 +72,7 @@ export async function calendarCreateEvent(accessToken: string, input: { summary:
   };
 }
 
-export async function calendarUpdateEvent(accessToken: string, input: { eventId: string, summary?: string, description?: string, start?: string, end?: string }): Promise<any> {
+export async function calendarUpdateEvent(accessToken: string, input: { eventId: string, summary?: string, description?: string, start?: string, end?: string, timeZone?: string }): Promise<any> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   const calendar = google.calendar({ version: 'v3', auth });
@@ -80,8 +80,8 @@ export async function calendarUpdateEvent(accessToken: string, input: { eventId:
   const requestBody: any = {};
   if (input.summary) requestBody.summary = input.summary;
   if (input.description) requestBody.description = input.description;
-  if (input.start) requestBody.start = { dateTime: new Date(input.start).toISOString() };
-  if (input.end) requestBody.end = { dateTime: new Date(input.end).toISOString() };
+  if (input.start) requestBody.start = input.timeZone ? { dateTime: new Date(input.start).toISOString(), timeZone: input.timeZone } : { dateTime: new Date(input.start).toISOString() };
+  if (input.end) requestBody.end = input.timeZone ? { dateTime: new Date(input.end).toISOString(), timeZone: input.timeZone } : { dateTime: new Date(input.end).toISOString() };
 
   const res = await calendar.events.patch({
     calendarId: 'primary',
