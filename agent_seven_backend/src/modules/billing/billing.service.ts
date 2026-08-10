@@ -235,31 +235,32 @@ export const billingService = {
     };
   },
 
-  async incrementUsage(tenantId: string, toolCalls?: number, tokens?: number, voiceMinutes?: number): Promise<void> {
-    const now = new Date();
-    let usage = await prisma.usageRecord.findFirst({
-      where: {
-        tenantId,
-        periodStart: { lte: now },
-        periodEnd: { gte: now }
-      }
-    });
+};
 
-    if (!usage) {
-      const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      usage = await prisma.usageRecord.create({
-        data: { tenantId, periodStart, periodEnd }
-      });
+export async function incrementUsage(tenantId: string, params: { toolCalls?: number, tokens?: number, voiceMinutes?: number }): Promise<void> {
+  const now = new Date();
+  let usage = await prisma.usageRecord.findFirst({
+    where: {
+      tenantId,
+      periodStart: { lte: now },
+      periodEnd: { gte: now }
     }
+  });
 
-    await prisma.usageRecord.update({
-      where: { id: usage.id },
-      data: {
-        toolCallCount: { increment: toolCalls || 0 },
-        llmTokensUsed: { increment: tokens || 0 },
-        voiceMinutesUsed: { increment: voiceMinutes || 0 }
-      }
+  if (!usage) {
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    usage = await prisma.usageRecord.create({
+      data: { tenantId, periodStart, periodEnd }
     });
   }
-};
+
+  await prisma.usageRecord.update({
+    where: { id: usage.id },
+    data: {
+      toolCallCount: { increment: params.toolCalls || 0 },
+      llmTokensUsed: { increment: params.tokens || 0 },
+      voiceMinutesUsed: { increment: params.voiceMinutes || 0 }
+    }
+  });
+}

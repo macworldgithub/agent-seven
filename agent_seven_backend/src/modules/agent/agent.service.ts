@@ -10,7 +10,7 @@ import { slackListChannels, slackGetMessages, slackSendMessage } from '../../ser
 import { memorySearch, memorySave, getActionItems, saveActionItem } from '../../services/tools/memory.tools';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { memoryService } from '../memory/memory.service';
-import { billingService } from '../billing/billing.service';
+import { billingService, incrementUsage } from '../billing/billing.service';
 
 export const agentService = {
   async getOrCreateAgent(tenantId: string): Promise<Agent> {
@@ -475,6 +475,7 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
     });
 
     const toolCallsMade: string[] = [];
+    const messages: any[] = [];
     let finalResponseText = '';
     let iterations = 0;
     const maxIterations = 5;
@@ -491,6 +492,8 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
         } else {
           responseMessage = await llmService.reasonWithSonnet(anthropicMessages, tools, systemPrompt);
         }
+
+        messages.push(responseMessage);
 
         // Accumulate text content from the response
         if (responseMessage.content) {
@@ -521,7 +524,6 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
         for (const toolCall of responseMessage.tool_calls) {
           toolCallsMade.push(toolCall.name);
           const toolRes = await this.executeTool(toolCall.name, toolCall.input, tenantId, agent.id);
-          await billingService.incrementUsage(tenantId, 1);
           toolResultsContent.push({
             type: 'tool_result',
             tool_use_id: toolCall.id,
@@ -536,6 +538,18 @@ IMPORTANT: When calling any tool that requires workspaceId, always use the "Work
         
         await prisma.agent.update({ where: { id: agent.id }, data: { status: 'THINKING' } });
       }
+
+      // After final response is assembled, get total tokens used
+      const totalTokens = messages.reduce((acc, msg: any) => {
+        return acc + (msg.usage?.output_tokens || 0) + (msg.usage?.input_tokens || 0)
+      }, 0)
+
+      // Increment usage
+      await incrementUsage(tenantId, {
+        toolCalls: toolCallsMade.length,
+        tokens: totalTokens,
+        voiceMinutes: 0
+      })
 
       // 11. Save assistant Message to DB
       await prisma.message.create({

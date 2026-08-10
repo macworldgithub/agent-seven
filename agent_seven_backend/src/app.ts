@@ -18,19 +18,23 @@ const app = express();
 app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
-  env.FRONTEND_URL,
-].filter(Boolean);
+  'http://localhost:3000',
+  'https://agent-seven-eight.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean)
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
-      callback(new Error('Not allowed by CORS'))
+      callback(new Error(`CORS blocked: ${origin}`))
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', "PATCH", 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
 app.use(express.json({
   verify: (req: any, res, buf) => {
     req.rawBody = buf;

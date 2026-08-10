@@ -25,13 +25,13 @@ export function AgentConfig() {
   const [formData, setFormData] = useState<Partial<Agent>>({
     name: '',
     spokenName: '',
-    personality: 'Professional',
+    personalityPreset: 'Professional',
     morningBriefingEnabled: false,
     morningBriefingTime: '08:00',
     morningBriefingTimezone: 'UTC',
-    proactiveDriftDetection: false,
-    proactiveReplyTracking: false,
-    proactiveWatchlist: false,
+    driftDetectionEnabled: false,
+    replyTrackingEnabled: false,
+    watchlistEnabled: false,
     systemPromptAppendix: '',
   });
 
@@ -40,13 +40,13 @@ export function AgentConfig() {
       setFormData({
         name: agent.name || '',
         spokenName: agent.spokenName || '',
-        personality: agent.personality || 'Professional',
+        personalityPreset: agent.personalityPreset || 'Professional',
         morningBriefingEnabled: agent.morningBriefingEnabled || false,
         morningBriefingTime: agent.morningBriefingTime || '08:00',
         morningBriefingTimezone: agent.morningBriefingTimezone || 'UTC',
-        proactiveDriftDetection: agent.proactiveDriftDetection || false,
-        proactiveReplyTracking: agent.proactiveReplyTracking || false,
-        proactiveWatchlist: agent.proactiveWatchlist || false,
+        driftDetectionEnabled: agent.driftDetectionEnabled || false,
+        replyTrackingEnabled: agent.replyTrackingEnabled || false,
+        watchlistEnabled: agent.watchlistEnabled || false,
         systemPromptAppendix: agent.systemPromptAppendix || '',
       });
       setCharCount((agent.systemPromptAppendix || '').length);
@@ -167,12 +167,12 @@ export function AgentConfig() {
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {personalities.map((p) => {
-              const isSelected = formData.personality === p.value;
+              const isSelected = formData.personalityPreset === p.value;
               return (
                 <button
                   key={p.value}
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, personality: p.value }))}
+                  onClick={() => setFormData((prev) => ({ ...prev, personalityPreset: p.value }))}
                   className="rounded-xl p-3 text-center transition-all duration-150 cursor-pointer"
                   style={{
                     background: isSelected ? 'var(--color-brand-dim)' : 'var(--color-surface-2)',
@@ -271,22 +271,22 @@ export function AgentConfig() {
           <Toggle
             label="Drift Detection"
             description="Nudge me when action items go stale or projects drift off-track"
-            checked={formData.proactiveDriftDetection || false}
-            onChange={(c) => handleToggle('proactiveDriftDetection', c)}
+            checked={formData.driftDetectionEnabled || false}
+            onChange={(c) => handleToggle('driftDetectionEnabled', c)}
           />
           <div style={{ height: '1px', background: 'var(--color-border)' }} />
           <Toggle
             label="Reply Tracking"
             description="Alert me when important emails go unanswered for too long"
-            checked={formData.proactiveReplyTracking || false}
-            onChange={(c) => handleToggle('proactiveReplyTracking', c)}
+            checked={formData.replyTrackingEnabled || false}
+            onChange={(c) => handleToggle('replyTrackingEnabled', c)}
           />
           <div style={{ height: '1px', background: 'var(--color-border)' }} />
           <Toggle
             label="Watchlist Monitoring"
             description="Monitor specific topics, people, or projects and surface key updates"
-            checked={formData.proactiveWatchlist || false}
-            onChange={(c) => handleToggle('proactiveWatchlist', c)}
+            checked={formData.watchlistEnabled || false}
+            onChange={(c) => handleToggle('watchlistEnabled', c)}
           />
         </div>
       </Card>

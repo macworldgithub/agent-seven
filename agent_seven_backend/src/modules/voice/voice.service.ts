@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { elevenlabsService } from '../../services/elevenlabs.service';
 import { agentService } from '../agent/agent.service';
+import { incrementUsage } from '../billing/billing.service';
 import { prisma } from '../../config/db';
 import fs from 'fs';
 import path from 'path';
@@ -48,6 +49,15 @@ export const voiceService = {
         })
       }
     });
+
+    // Estimate voice minutes from audio duration
+    const voiceMinutes = audioBuffer.length / (192000 * 8) / 60 // based on 192kbps
+
+    await incrementUsage(tenantId, {
+      toolCalls: 0,
+      tokens: 0,
+      voiceMinutes
+    })
 
     // 6. Return
     return {

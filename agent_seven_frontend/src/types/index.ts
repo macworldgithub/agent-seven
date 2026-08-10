@@ -19,13 +19,13 @@ export interface Agent {
   tenantId: string;
   name: string;
   spokenName: string | null;
-  personality: string;
+  personalityPreset: string;
   morningBriefingEnabled: boolean;
   morningBriefingTime: string | null;
   morningBriefingTimezone: string | null;
-  proactiveDriftDetection: boolean;
-  proactiveReplyTracking: boolean;
-  proactiveWatchlist: boolean;
+  driftDetectionEnabled: boolean;
+  replyTrackingEnabled: boolean;
+  watchlistEnabled: boolean;
   systemPromptAppendix: string | null;
   createdAt: string;
   updatedAt: string;
