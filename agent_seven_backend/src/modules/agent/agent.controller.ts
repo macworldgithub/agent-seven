@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { agentService } from './agent.service';
 import { logger } from '../../utils/logger';
+import { analyzeImageFromBase64 } from '../../services/vision.service';
 
 export const agentController = {
   async getOrCreateAgent(req: Request, res: Response) {
@@ -104,6 +105,53 @@ export const agentController = {
       res.status(204).send();
     } catch (err: any) {
       logger.error('Error in deleteConversation: ' + err.message);
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  /**
+   * POST /api/agent/chat/vision
+   * Accepts multipart/form-data with an optional image file.
+   * Analyzes the image first, then passes the enriched context to the agent loop.
+   */
+  async chatWithVision(req: Request, res: Response) {
+    try {
+      const tenantId = (req as any).user.tenantId;
+      const userId = (req as any).user.id;
+      const { message, conversationId } = req.body;
+      const imageFile = (req as any).file as Express.Multer.File | undefined;
+
+      let fullMessage = message || 'Please analyze this image.';
+
+      if (imageFile) {
+        const base64 = imageFile.buffer.toString('base64');
+        const mimeType = imageFile.mimetype;
+
+        logger.info(`Vision chat: analyzing uploaded image (${mimeType}, ${imageFile.size} bytes)`);
+
+        const imageAnalysis = await analyzeImageFromBase64(
+          base64,
+          mimeType,
+          message || 'Describe this image in detail and highlight any important information.'
+        );
+
+        // Build an enriched message so the agent loop has full context
+        fullMessage = message
+          ? `${message}\n\n[Uploaded Image Analysis]:\n${imageAnalysis}`
+          : `The user shared an image.\n\n[Image Analysis]:\n${imageAnalysis}`;
+      }
+
+      const result = await agentService.runAgentLoop({
+        tenantId,
+        userId,
+        conversationId: conversationId || null,
+        userMessage: fullMessage,
+        stream: false,
+      });
+
+      res.json({ success: true, data: result });
+    } catch (err: any) {
+      logger.error('Error in chatWithVision: ' + err.message);
       res.status(500).json({ error: err.message });
     }
   }

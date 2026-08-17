@@ -12,6 +12,9 @@ import {
   X,
   Menu,
   CreditCard,
+  FolderOpen,
+  Filter,
+  Eye,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
@@ -19,12 +22,15 @@ import { cn } from '../../lib/utils';
 const navMain = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
+  { name: 'Drive', href: '/drive', icon: FolderOpen },
   { name: 'Workspaces', href: '/workspaces', icon: Globe },
   { name: 'Memory', href: '/memory', icon: Brain },
 ];
 
 const navSettings = [
   { name: 'Action Items', href: '/actions', icon: CheckSquare },
+  { name: 'Email Triage', href: '/triage', icon: Filter },
+  { name: 'Watch-list', href: '/watchlist', icon: Eye },
   { name: 'Settings', href: '/agent', icon: Settings },
   { name: 'Billing', href: '/billing', icon: CreditCard },
 ];
@@ -32,6 +38,7 @@ const navSettings = [
 interface SidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;
+  className?: string;
 }
 
 function NavItem({
@@ -301,14 +308,14 @@ function SidebarContent({
   );
 }
 
-export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ mobileOpen, onMobileClose, className }: SidebarProps) {
   const { user, logout } = useAuth();
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside
-        className="hidden lg:flex flex-col fixed inset-y-0 left-0 z-30"
+        className={cn('hidden lg:flex flex-col fixed inset-y-0 left-0 z-30', className)}
         style={{ width: '256px' }}
       >
         <SidebarContent user={user} logout={logout} />

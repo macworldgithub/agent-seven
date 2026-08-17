@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { voiceService } from './voice.service';
 import { elevenlabsService } from '../../services/elevenlabs.service';
+import { llmService } from '../../services/llm.service';
 
 export const voiceController = {
   async processVoiceMessage(req: Request, res: Response) {
@@ -65,7 +66,7 @@ export const voiceController = {
         return res.status(400).json({ success: false, error: 'Audio file is required' });
       }
 
-      const transcription = await elevenlabsService.transcribeAudio(file.buffer, file.mimetype);
+      const transcription = await llmService.transcribeAudio(file.buffer, file.mimetype);
       res.json({ success: true, transcription });
     } catch (err: any) {
       console.error('Error in transcribe:', err);

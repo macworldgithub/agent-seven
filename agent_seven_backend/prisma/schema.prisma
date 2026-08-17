@@ -100,6 +100,9 @@ model Tenant {
   usageRecords  UsageRecord[]
   messages      Message[]
   oauthStates   OAuthState[]
+  emailClassifications  EmailClassification[]
+  watchlistItems        WatchlistItem[]
+  watchlistMatches      WatchlistMatch[]
 
   @@index([slug])
 }
@@ -207,6 +210,7 @@ model Agent {
   toolCalls     ToolCall[]
   memories      Memory[]
   actionItems   ActionItem[]
+  watchlistItems        WatchlistItem[]
 
   @@index([morningBriefingEnabled])
   @@index([tenantId])
@@ -337,4 +341,126 @@ model UsageRecord {
   updatedAt        DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model EmailClassification {
+  id              String   @id @default(uuid())
+  tenantId        String
+  workspaceId     String
+  messageId       String   // Gmail message ID
+  threadId        String
+  subject         String
+  from            String
+  snippet         String?
+  
+  // Classification results
+  priority        EmailPriority @default(NORMAL)
+  intent          EmailIntent   @default(FYI)
+  score           Int           @default(50) // 0-100
+  requiresReply   Boolean       @default(false)
+  hasDeadline     Boolean       @default(false)
+  deadlineText    String?
+  sentiment       String?       // positive/negative/neutral
+  summary         String?       // one-line AI summary
+  suggestedReply  String?       // auto-drafted reply
+  
+  isRead          Boolean       @default(false)
+  isArchived      Boolean       @default(false)
+  isActedOn       Boolean       @default(false)
+  
+  classifiedAt    DateTime      @default(now())
+  emailDate       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  
+  @@unique([tenantId, workspaceId, messageId])
+  @@index([tenantId, priority])
+  @@index([tenantId, workspaceId])
+  @@index([tenantId, requiresReply])
+  @@index([classifiedAt])
+}
+
+model WatchlistItem {
+  id          String        @id @default(uuid())
+  tenantId    String
+  agentId     String
+  
+  type        WatchlistType
+  value       String        // email address, domain, or keyword
+  label       String?       // user-friendly label
+  description String?
+  
+  // Notification settings
+  notifyOnEmail   Boolean @default(true)
+  notifyOnSlack   Boolean @default(true)
+  alertLevel      AlertLevel @default(NORMAL)
+  
+  isActive    Boolean   @default(true)
+  lastMatchAt DateTime?
+  matchCount  Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  agent       Agent     @relation(fields: [agentId], references: [id])
+  matches     WatchlistMatch[]
+  
+  @@index([tenantId, type])
+  @@index([tenantId, isActive])
+}
+
+model WatchlistMatch {
+  id              String      @id @default(uuid())
+  tenantId        String
+  watchlistItemId String
+  
+  source          String      // 'email' or 'slack'
+  sourceId        String      // messageId or threadId
+  matchedValue    String      // what was matched
+  context         String?     // snippet of matched content
+  
+  isRead          Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id])
+  
+  @@index([tenantId, isRead])
+  @@index([watchlistItemId])
+}
+
+enum EmailPriority {
+  URGENT
+  IMPORTANT
+  NORMAL
+  LOW
+  SPAM
+}
+
+enum EmailIntent {
+  ACTION_REQUIRED
+  QUESTION
+  MEETING_REQUEST
+  FOLLOW_UP
+  FYI
+  NEWSLETTER
+  SPAM
+}
+
+enum WatchlistType {
+  EMAIL_ADDRESS
+  EMAIL_DOMAIN
+  KEYWORD
+  SLACK_USER
+  SLACK_KEYWORD
+}
+
+enum AlertLevel {
+  CRITICAL
+  HIGH
+  NORMAL
+  LOW
 }

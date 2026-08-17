@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { elevenlabsService } from '../../services/elevenlabs.service';
+import { llmService } from '../../services/llm.service';
 import { agentService } from '../agent/agent.service';
 import { incrementUsage } from '../billing/billing.service';
 import { prisma } from '../../config/db';
@@ -8,11 +9,11 @@ import path from 'path';
 import crypto from 'crypto';
 
 export const voiceService = {
-  async processVoiceMessage(params: { tenantId: string, userId: string, audioBuffer: Buffer, mimeType: string, conversationId?: string }): Promise<{ transcription: string, response: string, audioUrl: string, conversationId: string }> {
+  async processVoiceMessage(params: { tenantId: string, userId: string, audioBuffer: Buffer, mimeType: string, conversationId?: string }): Promise<{ transcription: string, response: string, audioUrl: string, audioBase64: string, conversationId: string }> {
     const { tenantId, userId, audioBuffer, mimeType, conversationId } = params;
 
     // 1. Transcribe audio
-    const transcription = await elevenlabsService.transcribeAudio(audioBuffer, mimeType);
+    const transcription = await llmService.transcribeAudio(audioBuffer, mimeType);
 
     // 2. Run through agent loop
     const agentResult = await agentService.runAgentLoop({
@@ -60,10 +61,12 @@ export const voiceService = {
     })
 
     // 6. Return
+    const audioBase64 = ttsBuffer.toString('base64');
     return {
       transcription,
       response: agentResult.response,
       audioUrl: `/audio/${fileName}`,
+      audioBase64,
       conversationId: agentResult.conversationId
     };
   },

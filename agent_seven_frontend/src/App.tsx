@@ -13,6 +13,9 @@ import { ActionItemsPage } from './pages/ActionItems';
 import { Billing } from './pages/Billing';
 import { BillingSuccess } from './pages/BillingSuccess';
 import { BillingCancel } from './pages/BillingCancel';
+import { Drive } from './pages/Drive';
+import { EmailTriage } from './pages/EmailTriage';
+import { Watchlist } from './pages/Watchlist';
 import { useAuth } from './hooks/useAuth';
 import { AuthCallback } from './pages/AuthCallback';
 import './App.css';
@@ -33,10 +36,13 @@ function App() {
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<AgentChat />} />
+        <Route path="/drive" element={<Drive />} />
         <Route path="/workspaces" element={<WorkspaceSettings />} />
         <Route path="/agent" element={<AgentConfig />} />
         <Route path="/memory" element={<MemoryPage />} />
         <Route path="/actions" element={<ActionItemsPage />} />
+        <Route path="/triage" element={<EmailTriage />} />
+        <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/billing/success" element={<BillingSuccess />} />
         <Route path="/billing/cancel" element={<BillingCancel />} />

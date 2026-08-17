@@ -21,6 +21,7 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@slack/web-api": "^8.0.0",
+    "axios": "^1.19.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.81.2",
     "cors": "^2.8.6",

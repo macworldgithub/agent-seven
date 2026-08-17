@@ -7,7 +7,14 @@ export class WorkspaceController {
   static async initiateGoogleOAuth(req: Request, res: Response, next: NextFunction) {
     try {
       const tenantId = req.user!.tenantId;
-      const { url } = await WorkspaceService.initiateOAuth(tenantId, WorkspaceProvider.GOOGLE);
+      const referer = req.headers.referer;
+      let returnToUrl = env.FRONTEND_URL;
+      if (referer) {
+        try {
+          returnToUrl = new URL(referer).origin;
+        } catch (e) {}
+      }
+      const { url } = await WorkspaceService.initiateOAuth(tenantId, WorkspaceProvider.GOOGLE, returnToUrl);
       res.json({ success: true, data: { url } });
     } catch (error) {
       next(error);
@@ -15,29 +22,49 @@ export class WorkspaceController {
   }
 
   static async handleGoogleCallback(req: Request, res: Response, next: NextFunction) {
+    let returnToUrl = env.FRONTEND_URL;
     try {
       const { code, state } = req.query;
       
-      if (!code || !state) {
-        return res.redirect(`${env.FRONTEND_URL}/onboarding?step=4&workspaceError=missing_params`);
-      }
+      let isAuthLogin = false;
 
       if (state === 'auth_login') {
+        isAuthLogin = true;
+      } else if (typeof state === 'string') {
+        try {
+          const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8'));
+          if (decoded.action === 'auth_login') isAuthLogin = true;
+          if (decoded.returnToUrl) returnToUrl = decoded.returnToUrl;
+        } catch (e) {}
+      }
+      
+      if (!code || !state) {
+        return res.redirect(`${returnToUrl}/onboarding?step=4&workspaceError=missing_params`);
+      }
+
+      if (isAuthLogin) {
         return res.redirect(`/api/auth/google/callback?code=${code}&state=${state}`);
       }
 
       await WorkspaceService.handleGoogleCallback(code as string, state as string);
-      res.redirect(`${env.FRONTEND_URL}/onboarding?step=4&workspaceConnected=true`);
+      res.redirect(`${returnToUrl}/onboarding?step=4&workspaceConnected=true`);
     } catch (error) {
       console.error('Google Callback Error:', error);
-      res.redirect(`${env.FRONTEND_URL}/onboarding?step=4&workspaceError=failed`);
+      res.redirect(`${returnToUrl}/onboarding?step=4&workspaceError=failed`);
     }
   }
 
   static async initiateSlackOAuth(req: Request, res: Response, next: NextFunction) {
     try {
       const tenantId = req.user!.tenantId;
-      const { url } = await WorkspaceService.initiateOAuth(tenantId, WorkspaceProvider.SLACK);
+      const referer = req.headers.referer;
+      let returnToUrl = env.FRONTEND_URL;
+      if (referer) {
+        try {
+          returnToUrl = new URL(referer).origin;
+        } catch (e) {}
+      }
+      const { url } = await WorkspaceService.initiateOAuth(tenantId, WorkspaceProvider.SLACK, returnToUrl);
       res.json({ success: true, data: { url } });
     } catch (error) {
       next(error);
@@ -45,18 +72,26 @@ export class WorkspaceController {
   }
 
   static async handleSlackCallback(req: Request, res: Response, next: NextFunction) {
+    let returnToUrl = env.FRONTEND_URL;
     try {
       const { code, state } = req.query;
       
+      if (typeof state === 'string') {
+        try {
+          const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8'));
+          if (decoded.returnToUrl) returnToUrl = decoded.returnToUrl;
+        } catch (e) {}
+      }
+      
       if (!code || !state) {
-        return res.redirect(`${env.FRONTEND_URL}/onboarding?step=4&workspaceError=missing_params`);
+        return res.redirect(`${returnToUrl}/onboarding?step=4&workspaceError=missing_params`);
       }
 
       await WorkspaceService.handleSlackCallback(code as string, state as string);
-      res.redirect(`${env.FRONTEND_URL}/onboarding?step=4&workspaceConnected=true`);
+      res.redirect(`${returnToUrl}/onboarding?step=4&workspaceConnected=true`);
     } catch (error) {
       console.error('Slack Callback Error:', error);
-      res.redirect(`${env.FRONTEND_URL}/onboarding?step=4&workspaceError=failed`);
+      res.redirect(`${returnToUrl}/onboarding?step=4&workspaceError=failed`);
     }
   }
 
@@ -125,7 +160,14 @@ export class WorkspaceController {
     try {
       const tenantId = req.user!.tenantId;
       const { id } = req.params;
-      const { url } = await WorkspaceService.reconnectWorkspace(id as string, tenantId);
+      const referer = req.headers.referer;
+      let returnToUrl = env.FRONTEND_URL;
+      if (referer) {
+        try {
+          returnToUrl = new URL(referer).origin;
+        } catch (e) {}
+      }
+      const { url } = await WorkspaceService.reconnectWorkspace(id as string, tenantId, returnToUrl);
       res.json({ success: true, data: { url } });
     } catch (error) {
       next(error);

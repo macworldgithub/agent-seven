@@ -14,6 +14,37 @@ export const agentService = {
     const res = await api.post('/agent/chat', { message, conversationId });
     return res.data.data;
   },
+  /**
+   * Send a message with an optional image attachment via multipart/form-data.
+   * Posts to /agent/chat/vision which runs GPT-4o vision before the agent loop.
+   */
+  sendMessageWithImage: async (message: string, conversationId?: string, imageBlob?: Blob, mimeType?: string) => {
+    const formData = new FormData();
+    formData.append('message', message);
+    if (conversationId) formData.append('conversationId', conversationId);
+    if (imageBlob) {
+      const extension = (mimeType || 'image/jpeg').split('/')[1] || 'jpg';
+      formData.append('image', imageBlob, `upload.${extension}`);
+    }
+
+    // Use fetch directly since axios can interfere with FormData Content-Type boundaries
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || '';
+    const baseUrl = (api.defaults.baseURL || '').replace(/\/$/, '');
+
+    const response = await fetch(`${baseUrl}/agent/chat/vision`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(err.error || 'Vision chat request failed');
+    }
+
+    const data = await response.json();
+    return data.data;
+  },
   getConversations: async () => {
     const res = await api.get('/agent/conversations');
     return res.data.data as Conversation[];
@@ -46,3 +77,4 @@ export const agentService = {
     return res.data.data as { url: string };
   }
 };
+

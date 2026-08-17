@@ -7,6 +7,7 @@ interface BadgeProps {
   variant?: BadgeVariant;
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const variantStyles: Record<BadgeVariant, React.CSSProperties> = {
@@ -37,14 +38,14 @@ const variantStyles: Record<BadgeVariant, React.CSSProperties> = {
   },
 };
 
-export function Badge({ variant = 'default', children, className }: BadgeProps) {
+export function Badge({ variant = 'default', children, className, style }: BadgeProps) {
   return (
     <span
       className={cn(
         'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
         className
       )}
-      style={variantStyles[variant]}
+      style={{ ...variantStyles[variant], ...style }}
     >
       {children}
     </span>

@@ -17,7 +17,7 @@ import {
   Star,
   Settings,
 } from 'lucide-react';
-import { useTestConnection, useRevokeWorkspace } from '../../hooks/useWorkspace';
+import { useTestConnection, useRevokeWorkspace, useReconnectWorkspace } from '../../hooks/useWorkspace';
 
 interface WorkspaceCardProps {
   workspace: Workspace;
@@ -65,9 +65,11 @@ const googlePermissions = [
 export function WorkspaceCard({ workspace, onManagePermissions }: WorkspaceCardProps) {
   const testMutation = useTestConnection(workspace.id);
   const revokeMutation = useRevokeWorkspace(workspace.id);
+  const reconnectMutation = useReconnectWorkspace(workspace.id);
   const [hovered, setHovered] = useState(false);
 
   const statusBadge = getStatusBadge(workspace.status);
+  const isExpired = workspace.status === 'expired';
 
   const handleTest = async () => {
     try {
@@ -81,6 +83,14 @@ export function WorkspaceCard({ workspace, onManagePermissions }: WorkspaceCardP
   const handleRevoke = async () => {
     if (confirm(`Revoke access to ${workspace.name}? This cannot be undone.`)) {
       await revokeMutation.mutateAsync();
+    }
+  };
+
+  const handleReconnect = async () => {
+    try {
+      await reconnectMutation.mutateAsync();
+    } catch (e: any) {
+      alert(`Reconnect failed: ${e.message}`);
     }
   };
 
@@ -186,20 +196,41 @@ export function WorkspaceCard({ workspace, onManagePermissions }: WorkspaceCardP
         </div>
       )}
 
+      {/* Expired warning message */}
+      {isExpired && (
+        <div className="px-5 py-2" style={{ background: 'rgba(239, 68, 68, 0.1)', borderTop: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <p style={{ fontSize: '12px', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertCircle size={14} />
+            Token expired. Click Reconnect to restore access.
+          </p>
+        </div>
+      )}
+
       {/* Actions row */}
       <div
         className="flex items-center gap-2 px-5 py-3"
         style={{ borderTop: '1px solid var(--color-border)' }}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={<RefreshCw size={12} />}
-          loading={testMutation.isPending}
-          onClick={handleTest}
-        >
-          Test
-        </Button>
+        {isExpired ? (
+          <Button 
+            variant="primary" 
+            size="sm"
+            loading={reconnectMutation.isPending}
+            onClick={handleReconnect}
+          >
+            Reconnect
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<RefreshCw size={12} />}
+            loading={testMutation.isPending}
+            onClick={handleTest}
+          >
+            Test
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"

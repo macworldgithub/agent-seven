@@ -10,6 +10,9 @@ import agentRouter from './modules/agent/agent.routes';
 import memoryRouter from './modules/memory/memory.routes';
 import voiceRouter from './modules/voice/voice.routes';
 import billingRouter from './modules/billing/billing.routes';
+import driveRouter from './modules/drive/drive.routes';
+import triageRouter from './modules/triage/triage.routes';
+import healthRouter from './modules/health/health.routes';
 import { agentQueue, briefingQueue } from './config/queues';
 import path from 'path';
 
@@ -51,22 +54,9 @@ app.use('/api/agent', agentRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/voice', voiceRouter);
 app.use('/api/billing', billingRouter);
-
-app.get('/api/health', async (req, res) => {
-  const agentQueueCount = await agentQueue.getJobCounts()
-  const briefingQueueCount = await briefingQueue.getJobCounts()
-  res.json({
-    success: true,
-    data: {
-      status: 'ok',
-      queues: {
-        agent: agentQueueCount,
-        briefing: briefingQueueCount
-      },
-      timestamp: new Date().toISOString()
-    }
-  })
-})
+app.use('/api/drive', driveRouter);
+app.use('/api/triage', triageRouter);
+app.use('/api/health', healthRouter);
 
 app.use(errorHandler);
 

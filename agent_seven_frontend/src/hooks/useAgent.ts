@@ -106,3 +106,69 @@ export function useSendMessage() {
     },
   });
 }
+
+/**
+ * Mutation for sending messages with an optional image attachment.
+ * Displays an image preview thumbnail in the optimistic user message bubble.
+ */
+export function useSendMessageWithImage() {
+  const queryClient = useQueryClient();
+  const addMessage = useAgentStore((state) => state.addMessage);
+  const setThinking = useAgentStore((state) => state.setThinking);
+
+  return useMutation({
+    mutationFn: async ({
+      content,
+      conversationId,
+      imageBlob,
+      mimeType,
+      imagePreviewUrl,
+    }: {
+      content: string;
+      conversationId?: string;
+      imageBlob?: Blob;
+      mimeType?: string;
+      imagePreviewUrl?: string;
+    }) => {
+      // Optimistic user message with image preview
+      const optimisticMessage: Message & { imageUrl?: string } = {
+        id: `temp-${Date.now()}`,
+        conversationId: conversationId || 'temp-conv',
+        role: 'user',
+        content,
+        createdAt: new Date().toISOString(),
+        imageUrl: imagePreviewUrl,
+      };
+
+      addMessage(optimisticMessage as Message);
+      setThinking(true);
+
+      return agentService.sendMessageWithImage(content, conversationId, imageBlob, mimeType);
+    },
+    onSuccess: (data, variables) => {
+      if (!variables.conversationId && data?.conversationId) {
+        queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
+          const conversations = queryClient.getQueryData(['conversations']) as any[];
+          const newConv = conversations?.find((c: any) => c.id === data.conversationId);
+          if (newConv) {
+            useAgentStore.getState().setCurrentConversation(newConv);
+          } else {
+            useAgentStore.getState().setCurrentConversation({
+              id: data.conversationId,
+              tenantId: '',
+              title: 'New Conversation',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        });
+      }
+    },
+    onSettled: () => {
+      setThinking(false);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+    },
+  });
+}
+

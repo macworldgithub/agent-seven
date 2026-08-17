@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkspaces } from '../hooks/useWorkspace';
 import { useConversations } from '../hooks/useAgent';
+import { useTriage } from '../hooks/useTriage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -74,6 +75,7 @@ export function Dashboard() {
   const { user } = useAuth();
   const { data: workspaces } = useWorkspaces();
   const { data: conversations } = useConversations();
+  const { summary: triageSummary, emails } = useTriage();
   const navigate = useNavigate();
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
@@ -93,7 +95,8 @@ export function Dashboard() {
       .catch(err => console.error('Failed to fetch subscription', err));
   }, []);
 
-  const firstName = user?.name?.split(' ')[0] || 'there';
+  const firstName = user?.name?.split(' ')[0] || 'Founder';
+
 
   return (
     <div
@@ -162,6 +165,39 @@ export function Dashboard() {
           label="Conversations"
         />
       </div>
+
+      {/* Triage Summary Card */}
+      {triageSummary && (
+        <Card className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-primary">Email Triage</h3>
+            <Link to="/triage" className="text-xs text-brand hover:underline">View all</Link>
+          </div>
+          
+          <div className="flex gap-3">
+            <div className="flex-1 text-center p-3 bg-danger/10 border border-danger/20 rounded-lg">
+              <div className="text-2xl font-bold text-danger">{triageSummary.urgent}</div>
+              <div className="text-xs text-muted">Urgent</div>
+            </div>
+            <div className="flex-1 text-center p-3 bg-warning/10 border border-warning/20 rounded-lg">
+              <div className="text-2xl font-bold text-warning">{triageSummary.important}</div>
+              <div className="text-xs text-muted">Important</div>
+            </div>
+            <div className="flex-1 text-center p-3 bg-brand/10 border border-brand/20 rounded-lg">
+              <div className="text-2xl font-bold text-brand">{triageSummary.requiresReply}</div>
+              <div className="text-xs text-muted">Need Reply</div>
+            </div>
+          </div>
+          
+          {emails.filter(e => e.priority === 'URGENT' && !e.isActedOn).slice(0, 1).map(topUrgentEmail => (
+            <div key={topUrgentEmail.id} className="mt-4 p-3 bg-surface-2 rounded-lg border-l-2 border-danger">
+              <p className="text-xs text-danger font-medium">URGENT</p>
+              <p className="text-sm font-medium text-primary mt-1 truncate">{topUrgentEmail.subject}</p>
+              <p className="text-xs text-muted truncate">{topUrgentEmail.from}</p>
+            </div>
+          ))}
+        </Card>
+      )}
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3 mb-6">

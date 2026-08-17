@@ -27,6 +27,12 @@ export function useTestConnection(id: string) {
   });
 }
 
+export function useReconnectWorkspace(id: string) {
+  return useMutation({
+    mutationFn: () => workspaceService.reconnectWorkspace(id),
+  });
+}
+
 export function useRevokeWorkspace(id: string) {
   const queryClient = useQueryClient();
   

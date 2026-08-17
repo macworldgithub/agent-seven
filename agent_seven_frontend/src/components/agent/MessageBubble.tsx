@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Message } from '../../types';
 import { cn, formatRelativeTime } from '../../lib/utils';
 import { useAuth } from '../../hooks/useAuth';
-import { Bot, Wrench } from 'lucide-react';
+import { Bot, Wrench, X } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
@@ -30,7 +30,11 @@ function getToolEmoji(toolName: string) {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const { user } = useAuth();
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const isUser = message.role.toLowerCase() === 'user';
+  
+  // Cast to any to access imageUrl which might not be in types yet
+  const imageUrl = (message as any).imageUrl;
 
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -87,6 +91,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 }
           }
         >
+          {imageUrl && (
+            <div className="mb-3">
+              <img 
+                src={imageUrl} 
+                alt="Attachment" 
+                className="rounded-lg max-w-xs w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setIsLightboxOpen(true)}
+              />
+            </div>
+          )}
           {message.content}
 
           {/* Tool use pills */}
@@ -159,6 +173,27 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           }}
         >
           {initials}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {isLightboxOpen && imageUrl && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <button 
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors bg-black/50 rounded-full"
+            onClick={() => setIsLightboxOpen(false)}
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={imageUrl} 
+            alt="Attachment fullscreen" 
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

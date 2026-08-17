@@ -72,6 +72,17 @@ export class AuthController {
 
   static async google(req: Request, res: Response, next: NextFunction) {
     try {
+      const referer = req.headers.referer;
+      let returnToUrl = env.FRONTEND_URL;
+      if (referer) {
+        try {
+          returnToUrl = new URL(referer).origin;
+        } catch (e) {}
+      }
+
+      const stateObj = { action: 'auth_login', returnToUrl };
+      const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
+
       const oauth2Client = new google.auth.OAuth2(
         env.GOOGLE_CLIENT_ID,
         env.GOOGLE_CLIENT_SECRET,
@@ -81,7 +92,7 @@ export class AuthController {
       const url = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: ['openid', 'email', 'profile'],
-        state: 'auth_login',
+        state,
       });
 
       res.redirect(url);
@@ -92,7 +103,7 @@ export class AuthController {
 
   static async googleCallback(req: Request, res: Response, next: NextFunction) {
     try {
-      const { code } = req.query;
+      const { code, state } = req.query;
       if (!code) {
         return res.status(400).json({ success: false, error: 'Missing code' });
       }
@@ -116,7 +127,21 @@ export class AuthController {
         avatar: userInfo.data.picture || undefined,
       });
 
-      res.redirect(`${env.FRONTEND_URL}/auth/callback?accessToken=${data.accessToken}&refreshToken=${data.refreshToken}`);
+      let returnToUrl = env.FRONTEND_URL;
+      if (state && typeof state === 'string') {
+        if (state !== 'auth_login') {
+          try {
+            const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8'));
+            if (decoded.returnToUrl) {
+              returnToUrl = decoded.returnToUrl;
+            }
+          } catch (e) {
+            // ignore parsing error, fallback to env.FRONTEND_URL
+          }
+        }
+      }
+
+      res.redirect(`${returnToUrl}/auth/callback?accessToken=${data.accessToken}&refreshToken=${data.refreshToken}`);
     } catch (error) {
       next(error);
     }

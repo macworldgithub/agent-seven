@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 
 // Lazy initialization – avoids crashing at import time if key is not yet set
 const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -87,6 +87,17 @@ export interface LLMResponse {
 }
 
 export const llmService = {
+  async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<string> {
+    const openai = getOpenAI();
+    const extension = mimeType.includes('webm') ? 'webm' : 'mp4';
+    const file = await toFile(audioBuffer, `audio.${extension}`, { type: mimeType });
+    const response = await openai.audio.transcriptions.create({
+      file,
+      model: 'whisper-1',
+    });
+    return response.text;
+  },
+
   /**
    * Quick classification using gpt-4o-mini (replaces claude-haiku).
    */

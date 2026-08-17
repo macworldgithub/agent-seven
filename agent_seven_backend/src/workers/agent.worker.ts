@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { redis } from '../config/redis';
+import { createRedisConnection } from '../config/redis';
 import { AgentJobData } from '../config/queues';
 import { agentService } from '../modules/agent/agent.service';
 import { prisma } from '../config/db';
@@ -22,8 +22,8 @@ export const agentWorker = new Worker<AgentJobData>(
             tenantId,
             userId,
             action: 'agent.job_failed',
-            resource: 'AgentWorker',
-            details: { jobId: job.id, error: error.message },
+            resourceType: 'AgentWorker',
+            metaJson: JSON.stringify({ jobId: job.id, error: error.message }),
           }
         });
         throw error;
@@ -31,7 +31,7 @@ export const agentWorker = new Worker<AgentJobData>(
     }
   },
   { 
-    connection: redis,
+    connection: createRedisConnection(),
     concurrency: 10 
   }
 );

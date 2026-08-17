@@ -1,8 +1,10 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useAgentStore } from '../../store/agentStore';
 import { useAuth } from '../../hooks/useAuth';
 import { SidebarToggle } from './Sidebar';
+import { triageService } from '../../services/triage.service';
 
 interface TopBarProps {
   title: string;
@@ -73,6 +75,14 @@ function AgentStatusPill() {
 export function TopBar({ title, onMenuClick }: TopBarProps) {
   const { user } = useAuth();
 
+  // Fetch unread watchlist alert count for the notification bell
+  const { data: alertCount = 0 } = useQuery({
+    queryKey: ['alerts-count'],
+    queryFn: () => triageService.getUnreadAlertCount(),
+    refetchInterval: 60_000, // refresh every minute
+    retry: false,
+  });
+
   const initials = user?.name
     ? user.name
         .split(' ')
@@ -110,9 +120,9 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       <div className="flex items-center gap-3">
         <AgentStatusPill />
 
-        {/* Bell */}
+        {/* Bell with alert count badge */}
         <button
-          className="flex items-center justify-center rounded-lg p-2 transition-all duration-150"
+          className="relative flex items-center justify-center rounded-lg p-2 transition-all duration-150"
           style={{ color: 'var(--color-text-muted)' }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLButtonElement).style.color =
@@ -125,8 +135,26 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               'var(--color-text-muted)';
             (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
           }}
+          title="Watchlist alerts"
         >
           <Bell size={16} />
+          {alertCount > 0 && (
+            <span
+              className="absolute flex items-center justify-center rounded-full text-white"
+              style={{
+                top: '4px',
+                right: '4px',
+                width: '14px',
+                height: '14px',
+                fontSize: '9px',
+                fontWeight: 700,
+                background: 'var(--color-danger)',
+                lineHeight: 1,
+              }}
+            >
+              {alertCount > 9 ? '9+' : alertCount}
+            </span>
+          )}
         </button>
 
         {/* Avatar */}

@@ -4,6 +4,8 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useAuth } from '../../hooks/useAuth';
 import { Spinner } from '../ui/Spinner';
+import { MobileNav } from './MobileNav';
+import { OfflineBanner } from '../pwa/OfflineBanner';
 
 const pageTitle: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -41,22 +43,27 @@ export function AppLayout() {
       className="flex min-h-screen"
       style={{ background: 'var(--color-bg)' }}
     >
+      <OfflineBanner />
+      
       {/* Sidebar */}
       <Sidebar
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
+        className="hidden lg:flex"
       />
 
       {/* Main content — offset by sidebar width on desktop */}
-      <div className="flex flex-col flex-1 min-w-0 lg:pl-64">
+      <div className="flex flex-col flex-1 min-w-0 lg:ml-64 overflow-hidden h-screen">
         <TopBar
           title={title}
           onMenuClick={() => setSidebarOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 relative">
           <Outlet />
         </main>
+        
+        <MobileNav className="lg:hidden" onMenuClick={() => setSidebarOpen(true)} />
       </div>
     </div>
   );

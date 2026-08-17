@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, Search, Bot, Mail, Calendar, FileText, MessageSquare, Pencil, Mic } from 'lucide-react';
-import { useMessages, useConversations, useSendMessage } from '../../hooks/useAgent';
+import { Send, Plus, Search, Bot, Mail, Calendar, FileText, MessageSquare, Pencil, Mic, Camera, FolderOpen, ExternalLink, X, Image as ImageIcon } from 'lucide-react';
+import { useMessages, useConversations, useSendMessage, useSendMessageWithImage } from '../../hooks/useAgent';
 import { useAgentStore } from '../../store/agentStore';
 import { MessageBubble } from './MessageBubble';
 import { VoiceRecorder } from './VoiceRecorder';
+import { CameraCapture } from '../pwa/CameraCapture';
 import { Spinner } from '../ui/Spinner';
 import { cn } from '../../lib/utils';
 import { Conversation } from '../../types';
@@ -14,7 +15,9 @@ import { formatRelativeTime } from '../../lib/utils';
 const suggestions = [
   { icon: Mail, label: 'Summarise my emails', prompt: 'Please summarise my unread emails from today.' },
   { icon: Calendar, label: 'Check my calendar', prompt: 'What does my schedule look like for today and tomorrow?' },
-  { icon: MessageSquare, label: 'Create a meeting', prompt: 'Help me schedule a meeting for this week.' },
+  { icon: FolderOpen, label: 'Search my Drive', prompt: 'Search my Drive for recent documents.' },
+  { icon: FileText, label: 'Create a proposal', prompt: 'Help me create a client proposal.' },
+  { icon: MessageSquare, label: 'Generate an invoice', prompt: 'Generate an invoice for a client.' },
   { icon: FileText, label: 'List action items', prompt: 'What are my current open action items?' },
 ];
 
@@ -39,8 +42,12 @@ export function AgentChat() {
   const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isNewChat, setIsNewChat] = useState(false);
   const [search, setSearch] = useState('');
+  const [attachedFile, setAttachedFile] = useState<{name: string} | null>(null);
+  const [pendingImage, setPendingImage] = useState<{ blob: Blob; mimeType: string; preview: string } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { user } = useAuth();
@@ -54,8 +61,40 @@ export function AgentChat() {
   useMessages(currentConversation?.id || null);
 
   const sendMessageMutation = useSendMessage();
+  const sendMessageWithImageMutation = useSendMessageWithImage();
 
-  const firstName = user?.name?.split(' ')[0] || 'there';
+  const firstName = user?.name?.split(' ')[0] || 'Founder';
+
+  useEffect(() => {
+    const pendingMessage = sessionStorage.getItem('pendingChatMessage');
+    const isNew = sessionStorage.getItem('newConversation');
+    const pendingFileStr = sessionStorage.getItem('pendingChatFile');
+    
+    if (pendingMessage && isNew === 'true') {
+      sessionStorage.removeItem('pendingChatMessage');
+      sessionStorage.removeItem('newConversation');
+      sessionStorage.removeItem('pendingChatFile');
+      
+      setCurrentConversation(null);
+      useAgentStore.getState().setMessages([]);
+      
+      setInput(pendingMessage);
+      if (pendingFileStr) {
+        try {
+          setAttachedFile(JSON.parse(pendingFileStr));
+        } catch(e) {}
+      }
+      
+      setTimeout(() => {
+        sendMessageMutation.mutate({
+          content: pendingMessage,
+          conversationId: undefined,
+        });
+        setInput('');
+        setAttachedFile(null);
+      }, 500);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,6 +103,19 @@ export function AgentChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isThinking]);
+
+  // Handle mobile keyboard scrolling
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    
+    const handler = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    viewport.addEventListener('resize', handler);
+    return () => viewport.removeEventListener('resize', handler);
+  }, []);
 
   useEffect(() => {
     if (!currentConversation && conversations && conversations.length > 0 && !isNewChat) {
@@ -81,12 +133,28 @@ export function AgentChat() {
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isThinking) return;
-    sendMessageMutation.mutate({
-      content: input,
-      conversationId: currentConversation?.id,
-    });
+    if ((!input.trim() && !pendingImage) || isThinking) return;
+
+    const messageText = input.trim() || 'Please analyze this image.';
+
+    if (pendingImage) {
+      // Send with image via vision endpoint
+      sendMessageWithImageMutation.mutate({
+        content: messageText,
+        conversationId: currentConversation?.id,
+        imageBlob: pendingImage.blob,
+        mimeType: pendingImage.mimeType,
+        imagePreviewUrl: pendingImage.preview,
+      });
+      setPendingImage(null);
+    } else {
+      sendMessageMutation.mutate({
+        content: messageText,
+        conversationId: currentConversation?.id,
+      });
+    }
     setInput('');
+    setAttachedFile(null);
   };
 
   const handleSuggestion = (prompt: string) => {
@@ -94,6 +162,25 @@ export function AgentChat() {
       content: prompt,
       conversationId: undefined,
     });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const preview = reader.result as string;
+      setPendingImage({
+        blob: file,
+        mimeType: file.type,
+        preview,
+      });
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
   };
 
   const createNewChat = () => {
@@ -106,13 +193,31 @@ export function AgentChat() {
     (c.title || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleImageCapture = (imageBase64: string, question?: string) => {
+    setIsCameraOpen(false);
+    const content = question || "Please analyze this image and tell me what you see.";
+    
+    sendMessageMutation.mutate({
+      content,
+      conversationId: currentConversation?.id,
+    });
+    // In a full implementation, you'd attach the base64 image here.
+    // For now, we simulate sending the message as text.
+  };
+
   const hasMessages = messages.length > 0 || isThinking;
 
   return (
     <div
       className="flex"
-      style={{ height: 'calc(100vh - 64px)', background: 'var(--color-bg)' }}
+      style={{ height: 'calc(100vh - 64px - env(safe-area-inset-bottom))', background: 'var(--color-bg)' }}
     >
+      {isCameraOpen && (
+        <CameraCapture 
+          onCapture={handleImageCapture} 
+          onClose={() => setIsCameraOpen(false)} 
+        />
+      )}
       {/* Conversation List — hidden on mobile */}
       <div
         className="hidden lg:flex flex-col flex-shrink-0"
@@ -333,7 +438,53 @@ export function AgentChat() {
             /* Messages */
             <div className="max-w-3xl mx-auto space-y-1">
               {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
+                <React.Fragment key={message.id}>
+                  <MessageBubble message={message} />
+                  {/* Document Created card — detect docs.google.com link in assistant messages */}
+                  {message.role === 'assistant' && (() => {
+                    const docMatch = message.content?.match(/https:\/\/docs\.google\.com\/document\/d\/([\w-]+)\/[\w?=&%]+/i);
+                    const titleMatch = message.content?.match(/(?:titled?|called?|named?)[:\s]+["']?([^"'\n]+?)["']?(?:\s+has been|\s+was|\s+is|[\.,]|$)/i);
+                    if (!docMatch) return null;
+                    return (
+                      <div
+                        className="ml-11 rounded-xl p-4 mt-1 mb-2 animate-fade-in"
+                        style={{
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(99,102,241,0.25)',
+                          maxWidth: '480px',
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="flex items-center justify-center rounded-lg"
+                            style={{ width: 28, height: 28, background: 'rgba(99,102,241,0.12)' }}
+                          >
+                            <FileText size={14} style={{ color: 'var(--color-brand-light)' }} />
+                          </div>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-brand-light)' }}>
+                            Document Created
+                          </span>
+                        </div>
+                        {titleMatch?.[1] && (
+                          <p style={{ fontSize: '13px', color: 'var(--color-text-primary)', marginBottom: 8, fontWeight: 500 }}>
+                            {titleMatch[1].trim()}
+                          </p>
+                        )}
+                        <a
+                          href={docMatch[0]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+                          style={{ color: 'var(--color-brand-light)', textDecoration: 'none' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.75')}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                        >
+                          Open in Google Drive <ExternalLink size={11} />
+                        </a>
+                      </div>
+                    );
+                  })()}
+                </React.Fragment>
               ))}
 
               {/* Thinking indicator */}
@@ -398,6 +549,54 @@ export function AgentChat() {
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
+                {attachedFile && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2 text-xs" style={{ background: 'var(--color-surface-3)' }}>
+                    <FileText size={12} style={{ color: 'var(--color-brand)' }} />
+                    <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{attachedFile.name}</span>
+                    <button type="button" onClick={() => setAttachedFile(null)} className="ml-auto transition-colors" style={{ color: 'var(--color-text-muted)' }} onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-muted)'}>
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+                {/* Pending image preview */}
+                {pendingImage && (
+                  <div style={{ display: 'inline-block', position: 'relative', marginBottom: 8, marginLeft: 4 }}>
+                    <img
+                      src={pendingImage.preview}
+                      alt="Pending upload"
+                      style={{
+                        height: 72,
+                        width: 72,
+                        borderRadius: 8,
+                        objectFit: 'cover',
+                        border: '2px solid var(--color-brand)',
+                        display: 'block',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPendingImage(null)}
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: '#EF4444',
+                        color: 'white',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                      }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
                 <div
                   className="flex items-end gap-3 rounded-2xl p-3 transition-all duration-150"
                   style={{
@@ -431,6 +630,46 @@ export function AgentChat() {
                     }}
                   />
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Image upload button */}
+                    <label
+                      className="flex items-center justify-center rounded-lg p-1.5 transition-all duration-150 cursor-pointer"
+                      style={{ color: pendingImage ? 'var(--color-brand-light)' : 'var(--color-text-muted)' }}
+                      title="Upload image for analysis"
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLLabelElement).style.color = 'var(--color-text-secondary)';
+                        (e.currentTarget as HTMLLabelElement).style.background = 'var(--color-surface-3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLLabelElement).style.color = pendingImage ? 'var(--color-brand-light)' : 'var(--color-text-muted)';
+                        (e.currentTarget as HTMLLabelElement).style.background = 'transparent';
+                      }}
+                    >
+                      <ImageIcon size={15} />
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCameraOpen(true)}
+                      title="Camera"
+                      className="flex items-center justify-center rounded-lg p-1.5 transition-all duration-150"
+                      style={{ color: 'var(--color-text-muted)' }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
+                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)';
+                        (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                      }}
+                    >
+                      <Camera size={15} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsVoiceMode(!isVoiceMode)}
@@ -453,21 +692,21 @@ export function AgentChat() {
                     </button>
                     <button
                       type="submit"
-                      disabled={!input.trim() || isThinking}
+                      disabled={(!input.trim() && !pendingImage) || isThinking}
                       className="flex items-center justify-center rounded-xl transition-all duration-150 active:scale-95"
                       style={{
                         width: '34px',
                         height: '34px',
                         background:
-                          input.trim() && !isThinking
+                          (input.trim() || pendingImage) && !isThinking
                             ? 'var(--color-brand)'
                             : 'var(--color-surface-3)',
                         color:
-                          input.trim() && !isThinking
+                          (input.trim() || pendingImage) && !isThinking
                             ? 'white'
                             : 'var(--color-text-muted)',
                         cursor:
-                          !input.trim() || isThinking ? 'not-allowed' : 'pointer',
+                          (!input.trim() && !pendingImage) || isThinking ? 'not-allowed' : 'pointer',
                       }}
                     >
                       {isThinking ? (

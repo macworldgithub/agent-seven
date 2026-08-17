@@ -1,8 +1,10 @@
 import { Worker } from 'bullmq';
-import { redis } from '../config/redis';
-import { SchedulerJobData, briefingQueue } from '../config/queues';
+import { createRedisConnection } from '../config/redis';
+import { SchedulerJobData, briefingQueue, schedulerQueue } from '../config/queues';
 import { prisma } from '../config/db';
+import cron from 'node-cron';
 import { refreshGoogleToken } from '../services/oauth.service';
+import { decrypt, encrypt } from '../utils/encryption';
 import { logger } from '../utils/logger';
 
 export const schedulerWorker = new Worker<SchedulerJobData>(
@@ -70,10 +72,11 @@ export const schedulerWorker = new Worker<SchedulerJobData>(
         for (const workspace of workspaces) {
           if (workspace.refreshToken) {
             try {
-              const { accessToken, expiresAt } = await refreshGoogleToken(workspace.refreshToken);
+              const decryptedRefreshToken = decrypt(workspace.refreshToken);
+              const { accessToken, expiresAt } = await refreshGoogleToken(decryptedRefreshToken);
               await prisma.workspace.update({
                 where: { id: workspace.id },
-                data: { accessToken, tokenExpiresAt: expiresAt }
+                data: { accessToken: encrypt(accessToken), tokenExpiresAt: expiresAt }
               });
             } catch (error: any) {
               await prisma.workspace.update({
@@ -107,12 +110,30 @@ export const schedulerWorker = new Worker<SchedulerJobData>(
 
         logger.info(`Cleanup: ${sessions.count} sessions, ${oauthStates.count} oauth states deleted.`);
       }
+      else if (type === 'run_email_triage') {
+        // Get all tenants with active Google workspaces
+        const tenants = await prisma.tenant.findMany({
+          where: { workspaces: { some: { status: 'ACTIVE', provider: 'GOOGLE' } } }
+        });
+        
+        for (const tenant of tenants) {
+          // get the first agent for the tenant (or all agents)
+          const agent = await prisma.agent.findFirst({ where: { tenantId: tenant.id } });
+          if (agent) {
+            await briefingQueue.add('email_triage', {
+              type: 'email_triage',
+              tenantId: tenant.id,
+              agentId: agent.id
+            });
+          }
+        }
+      }
     } catch (error: any) {
       logger.error(`Scheduler job failed for type ${type}, job ${job.id}: ${error.message}`);
       throw error;
     }
   },
-  { connection: redis }
+  { connection: createRedisConnection() }
 );
 
 schedulerWorker.on('failed', (job, err) => {
@@ -121,4 +142,9 @@ schedulerWorker.on('failed', (job, err) => {
 
 schedulerWorker.on('error', (err) => {
   logger.error(`Scheduler worker error: ${err.message}`);
+});
+
+// Run email triage every 30 minutes
+cron.schedule('*/30 * * * *', () => {
+  schedulerQueue.add('run_email_triage', { type: 'run_email_triage' });
 });

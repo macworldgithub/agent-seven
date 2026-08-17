@@ -5,13 +5,17 @@ import { encrypt, decrypt } from '../../utils/encryption';
 import { getGoogleAuthUrl, getSlackAuthUrl, exchangeGoogleCode, exchangeSlackCode, refreshGoogleToken } from '../../services/oauth.service';
 import { google } from 'googleapis';
 import { logger } from '../../utils/logger';
+import { env } from '../../config/env';
 
 export class WorkspaceService {
   static async initiateOAuth(
     tenantId: string,
-    provider: WorkspaceProvider
+    provider: WorkspaceProvider,
+    returnToUrl?: string
   ): Promise<{ url: string; state: string }> {
-    const state = crypto.randomBytes(16).toString('hex');
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const statePayload = { nonce, returnToUrl: returnToUrl || env.FRONTEND_URL };
+    const state = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     await prisma.oAuthState.create({
@@ -223,14 +227,22 @@ export class WorkspaceService {
     });
   }
 
-  static async reconnectWorkspace(id: string, tenantId: string): Promise<{ url: string }> {
+  static async reconnectWorkspace(id: string, tenantId: string, returnToUrl?: string): Promise<{ url: string }> {
     const workspace = await this.getWorkspaceById(id, tenantId);
-    const { url } = await this.initiateOAuth(tenantId, workspace.provider);
+    const { url } = await this.initiateOAuth(tenantId, workspace.provider, returnToUrl);
     return { url };
   }
 
   static async testConnection(id: string, tenantId: string): Promise<{ success: boolean; message: string }> {
-    const { decryptedAccessToken, provider } = await this.getWorkspaceWithDecryptedToken(id, tenantId);
+    let decryptedAccessToken: string;
+    let provider: WorkspaceProvider;
+
+    try {
+      ({ decryptedAccessToken, provider } = await this.getWorkspaceWithDecryptedToken(id, tenantId));
+    } catch (tokenError: any) {
+      // Token is expired and refresh failed — return graceful failure instead of 500
+      return { success: false, message: tokenError.message || 'Workspace token is invalid. Please reconnect.' };
+    }
 
     try {
       if (provider === WorkspaceProvider.GOOGLE) {
