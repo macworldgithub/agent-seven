@@ -16,6 +16,8 @@ import { BillingCancel } from './pages/BillingCancel';
 import { Drive } from './pages/Drive';
 import { EmailTriage } from './pages/EmailTriage';
 import { Watchlist } from './pages/Watchlist';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminRoute } from './components/auth/AdminRoute';
 import { useAuth } from './hooks/useAuth';
 import { AuthCallback } from './pages/AuthCallback';
 import './App.css';
@@ -43,6 +45,7 @@ function App() {
         <Route path="/actions" element={<ActionItemsPage />} />
         <Route path="/triage" element={<EmailTriage />} />
         <Route path="/watchlist" element={<Watchlist />} />
+        <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/billing/success" element={<BillingSuccess />} />
         <Route path="/billing/cancel" element={<BillingCancel />} />

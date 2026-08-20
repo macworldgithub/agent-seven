@@ -15,6 +15,7 @@ import {
   FolderOpen,
   Filter,
   Eye,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
@@ -33,6 +34,10 @@ const navSettings = [
   { name: 'Watch-list', href: '/watchlist', icon: Eye },
   { name: 'Settings', href: '/agent', icon: Settings },
   { name: 'Billing', href: '/billing', icon: CreditCard },
+];
+
+const navAdmin = [
+  { name: 'Admin Dashboard', href: '/admin', icon: Shield },
 ];
 
 interface SidebarProps {
@@ -227,6 +232,29 @@ function SidebarContent({
         {navSettings.map((item) => (
           <NavItem key={item.href} item={item} onClick={onClose} />
         ))}
+
+        {/* Section: Admin */}
+        {user?.isOrgAdmin && (
+          <>
+            <p
+              style={{
+                fontSize: '10px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--color-text-muted)',
+                fontWeight: 600,
+                paddingLeft: '12px',
+                marginTop: '24px',
+                marginBottom: '6px',
+              }}
+            >
+              Admin
+            </p>
+            {navAdmin.map((item) => (
+              <NavItem key={item.href} item={item} onClick={onClose} />
+            ))}
+          </>
+        )}
       </nav>
 
       {/* User card */}

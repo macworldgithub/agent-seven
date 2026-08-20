@@ -3,8 +3,93 @@ export interface User {
   email: string;
   name: string;
   tenantId: string;
+  isOrgAdmin: boolean;
+  isActive?: boolean;
+  avatar?: string | null;
+  lastLoginAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdminOverview {
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    plan: string;
+    subscriptionStatus: string;
+    createdAt: string;
+  };
+  metrics: {
+    totalUsers: number;
+    totalWorkspaces: number;
+    activeWorkspaces: number;
+    totalAgents: number;
+    totalToolCalls: number;
+    currentPeriod: {
+      periodStart: string;
+      periodEnd: string;
+      toolCallCount: number;
+      llmTokensUsed: number;
+      voiceMinutesUsed: number;
+    } | null;
+  };
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string | null;
+  isOrgAdmin: boolean;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminWorkspace {
+  id: string;
+  name: string;
+  provider: string;
+  status: string;
+  providerEmail: string | null;
+  isDefault: boolean;
+  lastSuccessfulCallAt: string | null;
+  permissions: string[];
+  createdAt: string;
+  updatedAt: string;
+  stats: {
+    totalCalls: number;
+    failedCalls: number;
+    successRate: number;
+  };
+}
+
+export interface AuditLogItem {
+  id: string;
+  tenantId: string;
+  userId: string | null;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  metaJson: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export interface AdminUsage {
+  usageHistory: Array<{
+    id: string;
+    periodStart: string;
+    periodEnd: string;
+    toolCallCount: number;
+    llmTokensUsed: number;
+    voiceMinutesUsed: number;
+  }>;
+  topTools: Array<{
+    toolName: string;
+    count: number;
+  }>;
 }
 
 export interface Tenant {
