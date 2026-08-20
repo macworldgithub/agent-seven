@@ -15,6 +15,8 @@ import {
   FileText,
   Clock,
   Zap,
+  UserPlus,
+  X,
 } from 'lucide-react';
 import { adminService } from '../services/admin.service';
 import { AdminOverview, AdminUser, AdminWorkspace, AuditLogItem, AdminUsage } from '../types';
@@ -31,6 +33,14 @@ export function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditPagination, setAuditPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [usage, setUsage] = useState<AdminUsage | null>(null);
+
+  // Add Member Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
 
   // Filters
   const [userSearch, setUserSearch] = useState('');
@@ -75,6 +85,33 @@ export function AdminDashboard() {
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isOrgAdmin: updated.isOrgAdmin } : u)));
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to update admin role');
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName || !newEmail || !newPassword) {
+      alert('Please fill out all required fields.');
+      return;
+    }
+    setCreatingUser(true);
+    try {
+      const created = await adminService.createUser({
+        name: newName,
+        email: newEmail,
+        password: newPassword,
+        isOrgAdmin: newIsAdmin,
+      });
+      setUsers((prev) => [created, ...prev]);
+      setShowAddModal(false);
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
+      setNewIsAdmin(false);
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || 'Failed to create team member');
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -237,7 +274,7 @@ export function AdminDashboard() {
       {/* TAB 2: TEAM MEMBERS */}
       {!loading && activeTab === 'users' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative max-w-md w-full">
               <Search size={16} className="absolute left-3 top-3 text-slate-500" />
               <input
@@ -248,6 +285,13 @@ export function AdminDashboard() {
                 className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
               />
             </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+            >
+              <UserPlus size={16} />
+              Add Team Member
+            </button>
           </div>
 
           <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/60">
@@ -452,6 +496,97 @@ export function AdminDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD TEAM MEMBER MODAL */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-md p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                  <UserPlus size={18} />
+                </div>
+                <h3 className="font-bold text-white text-lg">Add Team Member</h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Alex Smith"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. alex@company.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter temporary password..."
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  type="checkbox"
+                  id="isOrgAdminCheck"
+                  checked={newIsAdmin}
+                  onChange={(e) => setNewIsAdmin(e.target.checked)}
+                  className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <label htmlFor="isOrgAdminCheck" className="text-xs text-slate-300 font-medium cursor-pointer select-none">
+                  Grant Organization Admin privileges (`isOrgAdmin`)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingUser}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                >
+                  {creatingUser ? <RefreshCw size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                  Create Member
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

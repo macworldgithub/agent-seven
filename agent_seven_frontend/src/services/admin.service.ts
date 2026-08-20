@@ -10,6 +10,10 @@ export const adminService = {
     const res = await api.get('/tenant/admin/users');
     return res.data.data as AdminUser[];
   },
+  createUser: async (data: { name: string; email: string; password?: string; isOrgAdmin?: boolean }) => {
+    const res = await api.post('/tenant/admin/users', data);
+    return res.data.data as AdminUser;
+  },
   updateUserStatus: async (userId: string, updates: { isOrgAdmin?: boolean; isActive?: boolean }) => {
     const res = await api.patch(`/tenant/admin/users/${userId}`, updates);
     return res.data.data as AdminUser;
