@@ -49,10 +49,14 @@ export class AuthController {
 
   static async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken } = req.body;
-      if (refreshToken) {
-        await AuthService.logout(refreshToken);
+      const refreshToken = req.body?.refreshToken;
+      let accessToken: string | undefined;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        accessToken = authHeader.split(' ')[1];
       }
+
+      await AuthService.logout(refreshToken, accessToken);
       res.json({ success: true, data: null });
     } catch (error) {
       next(error);

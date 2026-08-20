@@ -168,10 +168,16 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  static async logout(refreshToken: string) {
-    await prisma.session.deleteMany({
-      where: { refreshToken },
-    });
+  static async logout(refreshToken?: string, accessToken?: string) {
+    if (refreshToken) {
+      await prisma.session.deleteMany({
+        where: { refreshToken },
+      });
+    } else if (accessToken) {
+      await prisma.session.deleteMany({
+        where: { token: accessToken },
+      });
+    }
   }
 
   static async googleSSO(googleUser: { googleId: string; email: string; name: string; avatar?: string }) {
