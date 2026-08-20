@@ -20,6 +20,22 @@ export class TenantController {
     }
   }
 
+  async createAdminUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { name, email, password, isOrgAdmin } = req.body;
+      const adminUserId = req.user!.id;
+      const user = await tenantService.createAdminUser(req.tenantId!, adminUserId, {
+        name,
+        email,
+        password,
+        isOrgAdmin,
+      });
+      res.json({ success: true, data: user });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateUserStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.params.userId as string;

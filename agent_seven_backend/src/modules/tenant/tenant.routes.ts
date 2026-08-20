@@ -12,6 +12,7 @@ router.use(requireOrgAdmin);
 
 router.get('/admin/overview', (req, res, next) => tenantController.getAdminOverview(req, res, next));
 router.get('/admin/users', (req, res, next) => tenantController.getAdminUsers(req, res, next));
+router.post('/admin/users', (req, res, next) => tenantController.createAdminUser(req, res, next));
 router.patch('/admin/users/:userId', (req, res, next) => tenantController.updateUserStatus(req, res, next));
 router.get('/admin/workspaces', (req, res, next) => tenantController.getAdminWorkspaces(req, res, next));
 router.get('/admin/audit-logs', (req, res, next) => tenantController.getAdminAuditLogs(req, res, next));

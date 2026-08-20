@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db';
+import bcrypt from 'bcryptjs';
 
 export class TenantService {
   /**
@@ -75,6 +76,62 @@ export class TenantService {
     });
 
     return users;
+  }
+
+  /**
+   * Create a new team member under the tenant
+   */
+  async createAdminUser(
+    tenantId: string,
+    adminUserId: string,
+    data: { name: string; email: string; password?: string; isOrgAdmin?: boolean }
+  ) {
+    const { name, email, password, isOrgAdmin } = data;
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new Error('User with this email already exists');
+    }
+
+    let passwordHash = null;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 12);
+    }
+
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        tenantId,
+        isOrgAdmin: isOrgAdmin || false,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        isOrgAdmin: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
+    });
+
+    // Create Audit Log entry
+    await prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: adminUserId,
+        action: 'MEMBER_CREATED',
+        resourceType: 'User',
+        resourceId: newUser.id,
+        metaJson: JSON.stringify({ name, email, isOrgAdmin: newUser.isOrgAdmin }),
+      },
+    });
+
+    return newUser;
   }
 
   /**
