@@ -13,6 +13,7 @@ import billingRouter from './modules/billing/billing.routes';
 import driveRouter from './modules/drive/drive.routes';
 import triageRouter from './modules/triage/triage.routes';
 import healthRouter from './modules/health/health.routes';
+import tenantRouter from './modules/tenant/tenant.routes';
 import { agentQueue, briefingQueue } from './config/queues';
 import path from 'path';
 
@@ -57,6 +58,7 @@ app.use('/api/billing', billingRouter);
 app.use('/api/drive', driveRouter);
 app.use('/api/triage', triageRouter);
 app.use('/api/health', healthRouter);
+app.use('/api/tenant', tenantRouter);
 
 app.use(errorHandler);
 
