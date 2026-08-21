@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { triageService, ClassifiedEmail, TriageSummary, TriageFilters, WatchlistItem, WatchlistMatch, WatchlistItemInput } from '../services/triage.service';
+import { triageService, ClassifiedEmail, TriageSummary, TriageFilters } from '../services/triage.service';
 
 export function useTriage(filters?: TriageFilters) {
   const [emails, setEmails] = useState<ClassifiedEmail[]>([]);
@@ -52,82 +52,5 @@ export function useTriage(filters?: TriageFilters) {
     refresh: fetchTriageData,
     triggerTriage,
     markActedOn
-  };
-}
-
-export function useWatchlist() {
-  const [items, setItems] = useState<WatchlistItem[]>([]);
-  const [alerts, setAlerts] = useState<WatchlistMatch[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [itemsData, alertsData, countData] = await Promise.all([
-        triageService.getWatchlistItems(),
-        triageService.getAlerts(true), // unread only
-        triageService.getUnreadAlertCount()
-      ]);
-      setItems(itemsData);
-      setAlerts(alertsData);
-      setUnreadCount(countData);
-    } catch (err) {
-      console.error('Failed to fetch watchlist data', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const addItem = async (data: WatchlistItemInput) => {
-    const newItem = await triageService.addWatchlistItem(data);
-    setItems([newItem, ...items]);
-    return newItem;
-  };
-
-  const updateItem = async (id: string, data: Partial<WatchlistItemInput>) => {
-    const updated = await triageService.updateWatchlistItem(id, data);
-    setItems(items.map(item => item.id === id ? updated : item));
-    return updated;
-  };
-
-  const deleteItem = async (id: string) => {
-    await triageService.deleteWatchlistItem(id);
-    setItems(items.filter(item => item.id !== id));
-  };
-
-  const toggleItem = async (id: string) => {
-    const updated = await triageService.toggleWatchlistItem(id);
-    setItems(items.map(item => item.id === id ? updated : item));
-  };
-
-  const markRead = async (id: string) => {
-    await triageService.markAlertRead(id);
-    setAlerts(alerts.filter(a => a.id !== id));
-    setUnreadCount(Math.max(0, unreadCount - 1));
-  };
-
-  const markAllRead = async () => {
-    await triageService.markAllAlertsRead();
-    setAlerts([]);
-    setUnreadCount(0);
-  };
-
-  return {
-    items,
-    alerts,
-    unreadCount,
-    loading,
-    refresh: fetchData,
-    addItem,
-    updateItem,
-    deleteItem,
-    toggleItem,
-    markRead,
-    markAllRead
   };
 }

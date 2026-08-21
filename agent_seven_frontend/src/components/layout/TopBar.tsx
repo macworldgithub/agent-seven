@@ -1,10 +1,8 @@
-import React from 'react';
-import { Bell } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useRef, useEffect } from 'react';
+import { LogOut } from 'lucide-react';
 import { useAgentStore } from '../../store/agentStore';
 import { useAuth } from '../../hooks/useAuth';
 import { SidebarToggle } from './Sidebar';
-import { triageService } from '../../services/triage.service';
 
 interface TopBarProps {
   title: string;
@@ -73,15 +71,19 @@ function AgentStatusPill() {
 }
 
 export function TopBar({ title, onMenuClick }: TopBarProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unread watchlist alert count for the notification bell
-  const { data: alertCount = 0 } = useQuery({
-    queryKey: ['alerts-count'],
-    queryFn: () => triageService.getUnreadAlertCount(),
-    refetchInterval: 60_000, // refresh every minute
-    retry: false,
-  });
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const initials = user?.name
     ? user.name
@@ -120,56 +122,53 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       <div className="flex items-center gap-3">
         <AgentStatusPill />
 
-        {/* Bell with alert count badge */}
-        <button
-          className="relative flex items-center justify-center rounded-lg p-2 transition-all duration-150"
-          style={{ color: 'var(--color-text-muted)' }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color =
-              'var(--color-text-primary)';
-            (e.currentTarget as HTMLButtonElement).style.background =
-              'var(--color-surface-2)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color =
-              'var(--color-text-muted)';
-            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-          }}
-          title="Watchlist alerts"
-        >
-          <Bell size={16} />
-          {alertCount > 0 && (
-            <span
-              className="absolute flex items-center justify-center rounded-full text-white"
+        {/* Avatar */}
+        <div className="relative" ref={profileRef}>
+          <button
+            className="flex items-center justify-center rounded-full text-xs font-bold transition-transform hover:scale-105"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            style={{
+              width: '32px',
+              height: '32px',
+              background: 'var(--color-brand-dim)',
+              color: 'var(--color-brand-light)',
+              border: '1px solid rgba(99,102,241,0.2)',
+              flexShrink: 0,
+            }}
+          >
+            {initials}
+          </button>
+          
+          {isProfileOpen && (
+            <div 
+              className="absolute right-0 mt-2 py-1 rounded-lg shadow-lg border"
               style={{
-                top: '4px',
-                right: '4px',
-                width: '14px',
-                height: '14px',
-                fontSize: '9px',
-                fontWeight: 700,
-                background: 'var(--color-danger)',
-                lineHeight: 1,
+                width: '160px',
+                background: 'rgba(17, 19, 24, 0.95)',
+                borderColor: 'var(--color-border)',
+                backdropFilter: 'blur(12px)',
+                zIndex: 50
               }}
             >
-              {alertCount > 9 ? '9+' : alertCount}
-            </span>
+              <button
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+                style={{ color: 'var(--color-danger)' }}
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  logout();
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-2)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                }}
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </div>
           )}
-        </button>
-
-        {/* Avatar */}
-        <div
-          className="flex items-center justify-center rounded-full text-xs font-bold"
-          style={{
-            width: '32px',
-            height: '32px',
-            background: 'var(--color-brand-dim)',
-            color: 'var(--color-brand-light)',
-            border: '1px solid rgba(99,102,241,0.2)',
-            flexShrink: 0,
-          }}
-        >
-          {initials}
         </div>
       </div>
     </header>

@@ -45,38 +45,6 @@ export interface TriageFilters {
   offset?: number;
 }
 
-export interface WatchlistItem {
-  id: string;
-  tenantId: string;
-  agentId: string;
-  type: 'EMAIL_ADDRESS' | 'EMAIL_DOMAIN' | 'KEYWORD' | 'SLACK_USER' | 'SLACK_KEYWORD';
-  value: string;
-  label: string | null;
-  description: string | null;
-  notifyOnEmail: boolean;
-  notifyOnSlack: boolean;
-  alertLevel: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW';
-  isActive: boolean;
-  lastMatchAt: string | null;
-  matchCount: number;
-  createdAt: string;
-}
-
-export interface WatchlistMatch {
-  id: string;
-  tenantId: string;
-  watchlistItemId: string;
-  source: string;
-  sourceId: string;
-  matchedValue: string;
-  context: string | null;
-  isRead: boolean;
-  createdAt: string;
-  watchlistItem?: WatchlistItem;
-}
-
-export type WatchlistItemInput = Partial<Omit<WatchlistItem, 'id' | 'tenantId' | 'agentId' | 'isActive' | 'lastMatchAt' | 'matchCount' | 'createdAt'>>;
-
 export const triageService = {
   // Email Triage
   getEmails: async (filters?: TriageFilters) => {
@@ -114,49 +82,4 @@ export const triageService = {
     const response = await api.post<{ success: boolean; data: { reply: string } }>(`/triage/${id}/draft-reply`);
     return response.data.data.reply;
   },
-
-  // Watchlist
-  getWatchlistItems: async () => {
-    const response = await api.get<{ success: boolean; data: WatchlistItem[] }>('/triage/watchlist');
-    return response.data.data;
-  },
-
-  addWatchlistItem: async (data: WatchlistItemInput) => {
-    const response = await api.post<{ success: boolean; data: WatchlistItem }>('/triage/watchlist', data);
-    return response.data.data;
-  },
-
-  updateWatchlistItem: async (id: string, data: Partial<WatchlistItemInput>) => {
-    const response = await api.patch<{ success: boolean; data: WatchlistItem }>(`/triage/watchlist/${id}`, data);
-    return response.data.data;
-  },
-
-  deleteWatchlistItem: async (id: string) => {
-    await api.delete(`/triage/watchlist/${id}`);
-  },
-
-  toggleWatchlistItem: async (id: string) => {
-    const response = await api.patch<{ success: boolean; data: WatchlistItem }>(`/triage/watchlist/${id}/toggle`);
-    return response.data.data;
-  },
-
-  // Alerts
-  getAlerts: async (unreadOnly?: boolean) => {
-    const params = unreadOnly !== undefined ? `?unreadOnly=${unreadOnly}` : '';
-    const response = await api.get<{ success: boolean; data: WatchlistMatch[] }>(`/triage/alerts${params}`);
-    return response.data.data;
-  },
-
-  markAlertRead: async (id: string) => {
-    await api.patch(`/triage/alerts/${id}/read`);
-  },
-
-  markAllAlertsRead: async () => {
-    await api.patch('/triage/alerts/read-all');
-  },
-
-  getUnreadAlertCount: async () => {
-    const response = await api.get<{ success: boolean; data: { count: number } }>('/triage/alerts/count');
-    return response.data.data.count;
-  }
 };

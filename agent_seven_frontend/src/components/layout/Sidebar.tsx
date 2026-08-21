@@ -14,7 +14,6 @@ import {
   CreditCard,
   FolderOpen,
   Filter,
-  Eye,
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -31,7 +30,6 @@ const navMain = [
 const navSettings = [
   { name: 'Action Items', href: '/actions', icon: CheckSquare },
   { name: 'Email Triage', href: '/triage', icon: Filter },
-  { name: 'Watch-list', href: '/watchlist', icon: Eye },
   { name: 'Settings', href: '/agent', icon: Settings },
   { name: 'Billing', href: '/billing', icon: CreditCard },
 ];

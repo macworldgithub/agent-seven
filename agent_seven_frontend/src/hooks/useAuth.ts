@@ -1,10 +1,11 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth.service';
 import { useAuthStore } from '../store/authStore';
 
 export function useAuth() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, tenant, agent, isAuthenticated, setAuth, clearAuth } = useAuthStore();
 
   const loginMutation = useMutation({
@@ -33,6 +34,7 @@ export function useAuth() {
       clearAuth();
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      queryClient.clear();
       navigate('/login');
     },
   });
