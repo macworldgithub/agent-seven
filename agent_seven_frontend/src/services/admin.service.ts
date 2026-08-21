@@ -18,6 +18,10 @@ export const adminService = {
     const res = await api.patch(`/tenant/admin/users/${userId}`, updates);
     return res.data.data as AdminUser;
   },
+  deleteUser: async (userId: string) => {
+    const res = await api.delete(`/tenant/admin/users/${userId}`);
+    return res.data.data as { id: string; email: string; name: string };
+  },
   getWorkspaces: async () => {
     const res = await api.get('/tenant/admin/workspaces');
     return res.data.data as AdminWorkspace[];

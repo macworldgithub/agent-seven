@@ -17,6 +17,7 @@ import {
   Zap,
   UserPlus,
   X,
+  Trash2,
 } from 'lucide-react';
 import { adminService } from '../services/admin.service';
 import { AdminOverview, AdminUser, AdminWorkspace, AuditLogItem, AdminUsage } from '../types';
@@ -41,6 +42,14 @@ export function AdminDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+
+  // Delete Confirmation Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Filters
   const [userSearch, setUserSearch] = useState('');
@@ -79,19 +88,29 @@ export function AdminDashboard() {
     loadData();
   }, [activeTab, auditPagination.page]);
 
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const handleToggleAdmin = async (user: AdminUser) => {
     try {
       const updated = await adminService.updateUserStatus(user.id, { isOrgAdmin: !user.isOrgAdmin });
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isOrgAdmin: updated.isOrgAdmin } : u)));
+      showToast(
+        updated.isOrgAdmin
+          ? `${user.name} has been promoted to Org Admin`
+          : `${user.name} has been demoted and notified`
+      );
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update admin role');
+      showToast(err.response?.data?.error || 'Failed to update admin role', 'error');
     }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newEmail || !newPassword) {
-      alert('Please fill out all required fields.');
+      showToast('Please fill out all required fields.', 'error');
       return;
     }
     setCreatingUser(true);
@@ -108,8 +127,9 @@ export function AdminDashboard() {
       setNewEmail('');
       setNewPassword('');
       setNewIsAdmin(false);
+      showToast(`${created.name} has been added to the team`);
     } catch (err: any) {
-      alert(err.response?.data?.error || err.message || 'Failed to create team member');
+      showToast(err.response?.data?.error || err.message || 'Failed to create team member', 'error');
     } finally {
       setCreatingUser(false);
     }
@@ -119,8 +139,29 @@ export function AdminDashboard() {
     try {
       const updated = await adminService.updateUserStatus(user.id, { isActive: !user.isActive });
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isActive: updated.isActive } : u)));
+      showToast(
+        updated.isActive
+          ? `${user.name} has been activated`
+          : `${user.name} has been suspended and notified`
+      );
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update user status');
+      showToast(err.response?.data?.error || 'Failed to update user status', 'error');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeletingUser(true);
+    try {
+      await adminService.deleteUser(userToDelete.id);
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      showToast(`${userToDelete.name} has been permanently removed`);
+    } catch (err: any) {
+      showToast(err.response?.data?.error || 'Failed to delete team member', 'error');
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -345,23 +386,37 @@ export function AdminDashboard() {
                     <td className="px-5 py-3.5 text-xs text-slate-400">
                       {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : 'Never'}
                     </td>
-                    <td className="px-5 py-3.5 text-right space-x-2">
-                      <button
-                        onClick={() => handleToggleAdmin(u)}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
-                      >
-                        {u.isOrgAdmin ? 'Demote' : 'Make Admin'}
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(u)}
-                        className={`px-2.5 py-1 text-xs rounded-lg border transition-colors cursor-pointer ${
-                          u.isActive
-                            ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400'
-                            : 'border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
-                        }`}
-                      >
-                        {u.isActive ? 'Suspend' : 'Activate'}
-                      </button>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleToggleAdmin(u)}
+                          className="px-2.5 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
+                          title={u.isOrgAdmin ? 'Demote to Member' : 'Promote to Admin'}
+                        >
+                          {u.isOrgAdmin ? 'Demote' : 'Make Admin'}
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(u)}
+                          className={`px-2.5 py-1 text-xs rounded-lg border transition-colors cursor-pointer ${
+                            u.isActive
+                              ? 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400'
+                              : 'border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
+                          }`}
+                          title={u.isActive ? 'Suspend this member' : 'Activate this member'}
+                        >
+                          {u.isActive ? 'Suspend' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserToDelete(u);
+                            setShowDeleteModal(true);
+                          }}
+                          className="px-2.5 py-1 text-xs rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
+                          title="Permanently delete this member"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -588,6 +643,80 @@ export function AdminDashboard() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteModal && userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-5">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                <Trash2 size={18} />
+              </div>
+              <h3 className="font-bold text-white text-lg">Delete Team Member</h3>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm text-slate-300">
+                Are you sure you want to permanently delete{' '}
+                <span className="font-semibold text-white">{userToDelete.name}</span>?
+              </p>
+              <p className="text-xs text-slate-400">
+                This action cannot be undone. The user’s account, sessions, and conversations will be
+                permanently removed.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+              <div className="flex items-center gap-2 text-xs text-red-400">
+                <AlertTriangle size={14} className="flex-shrink-0" />
+                <span>{userToDelete.email}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deletingUser}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-red-600 hover:bg-red-500 text-white transition-colors cursor-pointer"
+              >
+                {deletingUser ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[60] flex items-center gap-3 px-5 py-3 rounded-xl border shadow-2xl text-sm font-medium animate-fade-in-up ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}
+          style={{ backdropFilter: 'blur(12px)' }}
+        >
+          {toast.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-2 p-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
     </div>

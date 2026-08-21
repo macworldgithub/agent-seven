@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { StatusBanner } from './StatusBanner';
 import { useAuth } from '../../hooks/useAuth';
 import { Spinner } from '../ui/Spinner';
 import { MobileNav } from './MobileNav';
@@ -58,6 +59,7 @@ export function AppLayout() {
           title={title}
           onMenuClick={() => setSidebarOpen(true)}
         />
+        <StatusBanner />
 
         <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 relative">
           <Outlet />
