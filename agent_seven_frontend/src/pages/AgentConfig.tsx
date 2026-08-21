@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
 import { Modal } from '../components/ui/Modal';
 import { Spinner } from '../components/ui/Spinner';
-import { Bot, Save, Brain, Bell, AlertTriangle, Download, Trash2, User } from 'lucide-react';
+import { Bot, Save, Brain, Bell, AlertTriangle, Download, Trash2, User, Zap } from 'lucide-react';
 import { Agent } from '../types';
 
 const personalities = [
@@ -21,6 +21,8 @@ export function AgentConfig() {
   const updateMutation = useUpdateAgent();
   const [wipeModalOpen, setWipeModalOpen] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [testingBriefing, setTestingBriefing] = useState(false);
+  const [testBriefingMsg, setTestBriefingMsg] = useState('');
 
   const [formData, setFormData] = useState<Partial<Agent>>({
     name: '',
@@ -68,6 +70,20 @@ export function AgentConfig() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate(formData);
+  };
+
+  const handleTestBriefing = async () => {
+    try {
+      setTestingBriefing(true);
+      setTestBriefingMsg('');
+      const { briefingService } = await import('../services/briefing.service');
+      await briefingService.triggerBriefing();
+      setTestBriefingMsg('✓ Briefing generating! Check Morning Briefing page in ~1 minute.');
+    } catch (err: any) {
+      setTestBriefingMsg('Failed to trigger briefing: ' + (err.message || 'Unknown error'));
+    } finally {
+      setTestingBriefing(false);
+    }
   };
 
   const initials = (formData.name || 'A7')
@@ -204,56 +220,83 @@ export function AgentConfig() {
           checked={formData.morningBriefingEnabled || false}
           onChange={(c) => handleToggle('morningBriefingEnabled', c)}
         />
-
         {formData.morningBriefingEnabled && (
           <div
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5 pt-5 animate-fade-in"
+            className="mt-5 pt-5 animate-fade-in space-y-4"
             style={{ borderTop: '1px solid var(--color-border)' }}
           >
-            <Input
-              label="Briefing Time"
-              name="morningBriefingTime"
-              type="time"
-              value={formData.morningBriefingTime || '08:00'}
-              onChange={handleChange}
-            />
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: 'var(--color-text-secondary)',
-                  marginBottom: '6px',
-                }}
-              >
-                Timezone
-              </label>
-              <select
-                name="morningBriefingTimezone"
-                value={formData.morningBriefingTimezone || 'UTC'}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Briefing Time"
+                name="morningBriefingTime"
+                type="time"
+                value={formData.morningBriefingTime || '08:00'}
                 onChange={handleChange}
-                style={{
-                  width: '100%',
-                  height: '40px',
-                  paddingLeft: '12px',
-                  paddingRight: '32px',
-                  background: 'var(--color-surface-2)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  color: 'var(--color-text-primary)',
-                  fontSize: '14px',
-                }}
-              >
-                <option value="UTC">UTC</option>
-                <option value="America/New_York">Eastern Time (ET)</option>
-                <option value="America/Chicago">Central Time (CT)</option>
-                <option value="America/Denver">Mountain Time (MT)</option>
-                <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                <option value="Europe/London">London (GMT/BST)</option>
-                <option value="Asia/Karachi">Pakistan (PKT)</option>
-              </select>
+              />
+              <div className="space-y-1.5">
+                <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                  Timezone
+                </label>
+                <select
+                  name="morningBriefingTimezone"
+                  value={formData.morningBriefingTimezone || 'UTC'}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    height: '40px',
+                    paddingLeft: '12px',
+                    paddingRight: '32px',
+                    background: 'var(--color-surface-2)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '14px',
+                  }}
+                >
+                  <option value="UTC">UTC</option>
+                  <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+                  <option value="Australia/Melbourne">Australia/Melbourne (AEST)</option>
+                  <option value="Australia/Brisbane">Australia/Brisbane (AEST)</option>
+                  <option value="Australia/Perth">Australia/Perth (AWST)</option>
+                  <option value="Australia/Adelaide">Australia/Adelaide (ACST)</option>
+                  <option value="Asia/Karachi">Asia/Karachi (PKT)</option>
+                  <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                  <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                  <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                  <option value="America/New_York">America/New_York (EST)</option>
+                  <option value="America/Chicago">America/Chicago (CST)</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                  <option value="Europe/London">Europe/London (GMT)</option>
+                  <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+                </select>
+              </div>
             </div>
+
+            {/* Test button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleTestBriefing}
+                loading={testingBriefing}
+              >
+                <Zap size={13} style={{ marginRight: '4px' }} />
+                Generate Test Briefing
+              </Button>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                Generates a briefing right now to preview
+              </span>
+            </div>
+            {testBriefingMsg && (
+              <p style={{ fontSize: '12px', color: testBriefingMsg.startsWith('✓') ? 'var(--color-accent)' : 'var(--color-danger)', marginTop: '8px' }}>
+                {testBriefingMsg}
+              </p>
+            )}
+
+            {/* Next briefing info */}
+            <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '8px' }}>
+              Next briefing: tomorrow at {formData.morningBriefingTime} ({formData.morningBriefingTimezone})
+            </p>
           </div>
         )}
       </Card>

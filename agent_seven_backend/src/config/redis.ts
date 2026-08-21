@@ -1,56 +1,39 @@
-import Redis, { RedisOptions } from 'ioredis';
-import { env } from './env';
-import { logger } from '../utils/logger';
+import Redis from 'ioredis'
+import { env } from './env'
+import { logger } from '../utils/logger'
 
-// Shared connection options
-const isTls = env.REDIS_URL.startsWith('rediss://');
-
-const sharedOptions: RedisOptions = {
-  maxRetriesPerRequest: null,
-  retryStrategy: (times: number) => {
-    if (times > 3) return null;
-    return Math.min(times * 200, 2000);
-  },
-  reconnectOnError: (err: Error) => {
-    const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
-    return targetErrors.some(e => err.message.includes(e));
-  },
-  enableOfflineQueue: false,
-  connectTimeout: 10000,
-  lazyConnect: false,
-  keepAlive: 10000,
-  ...(isTls ? { tls: {} } : {}),
-};
-
-// Shared app-level Redis (for caching, pub/sub, etc.)
-export const redis = new Redis(env.REDIS_URL, sharedOptions);
-
-redis.on('connect', () => {
-  logger.info('Connected to Redis');
-});
-
-redis.on('error', (err) => {
-  logger.error(`Redis connection error: ${err instanceof Error ? err.message : String(err)}`);
-});
-
-/**
- * Factory that creates a dedicated ioredis connection for BullMQ.
- * BullMQ workers use blocking commands (BLPOP/XREAD) that cannot share
- * a connection with regular app commands — each worker/queue needs its own.
- */
-export function createRedisConnection(): Redis {
-  const connOptions: RedisOptions = {
-    ...sharedOptions,
-    // BullMQ requires maxRetriesPerRequest=null on its own connections
-    maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
+const createRedisClient = () => {
+  const client = new Redis(env.REDIS_URL, {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    enableOfflineQueue: true,   // Allow queuing when disconnected
+    connectTimeout: 10000,
+    commandTimeout: 5000,
+    retryStrategy: (times) => {
+      if (times > 10) {
+        logger.error('Redis: max retries exceeded')
+        return null
+      }
+      const delay = Math.min(times * 500, 5000)
+      logger.warn(`Redis: retrying connection in ${delay}ms (attempt ${times})`)
+      return delay
+    },
+    reconnectOnError: (err) => {
+      const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND']
+      return targetErrors.some(e => err.message.includes(e))
+    },
     lazyConnect: false,
-  };
-  const conn = new Redis(env.REDIS_URL, connOptions);
+    keepAlive: 30000,
+    family: 4 // Force IPv4
+  })
 
-  conn.on('error', (err) => {
-    logger.error(`BullMQ Redis connection error: ${err instanceof Error ? err.message : String(err)}`);
-  });
+  client.on('connect', () => logger.info('Connected to Redis'))
+  client.on('ready', () => logger.info('Redis client ready'))
+  client.on('error', (err) => logger.error(`Redis error: ${err.message}`))
+  client.on('reconnecting', () => logger.warn('Redis reconnecting...'))
+  client.on('close', () => logger.warn('Redis connection closed'))
 
-  return conn;
+  return client
 }
+
+export const redis = createRedisClient()
+export default redis

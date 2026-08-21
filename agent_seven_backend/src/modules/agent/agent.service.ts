@@ -9,6 +9,7 @@ import { driveListFiles, driveGetFile, driveCreateFolder, driveUploadFile, drive
 import { slackListChannels, slackGetMessages, slackSendMessage, slackGetChannelImages, slackAnalyzeImage, slackSummarizeChannelImages } from '../../services/tools/slack.tools';
 import { memorySearch, memorySave, getActionItems, saveActionItem } from '../../services/tools/memory.tools';
 import { getUrgentEmails, getEmailsRequiringReply, getEmailTriageSummary, triggerEmailTriage } from '../../services/tools/triage.tools';
+import { getMorningBriefing, triggerMorningBriefing } from '../../services/tools/briefing.tools';
 import { analyzeImageFromUrl } from '../../services/vision.service';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { memoryService } from '../memory/memory.service';
@@ -161,6 +162,17 @@ EMAIL TRIAGE:
 - Always trigger triage when user asks about email priorities for fresh results
 - For urgent emails: always suggest drafting a reply or creating an action item
 - Triage uses: tenantId="${tenant.id}", agentId="${agent.id}"
+`;
+
+    prompt += `
+MORNING BRIEFING:
+- Every morning at ${agent.morningBriefingTime || '08:00'} (${agent.morningBriefingTimezone || 'UTC'}), a briefing is automatically generated
+- When user asks "what's my briefing", "morning brief", "show me my brief", "what did my briefing say" → use get_morning_briefing tool
+- When user asks to "run my briefing now", "generate my briefing", "trigger my briefing" → use trigger_morning_briefing tool
+- Briefing covers: unread emails, today's calendar, open action items, critical alerts, Slack summary
+- After showing briefing: ask if user wants to act on any items (reply to emails, action items, etc.)
+- get_morning_briefing requires: tenantId="${tenant.id}"
+- trigger_morning_briefing requires: tenantId="${tenant.id}", agentId="${agent.id}"
 `;
 
     return prompt;
@@ -659,6 +671,34 @@ EMAIL TRIAGE:
       },
     );
 
+    // Briefing tools — always available
+    tools.push(
+      {
+        name: 'get_morning_briefing',
+        description: 'Get the most recent morning briefing or a briefing for a specific date. Use when user asks "what is my briefing", "show me my morning brief", "what did my briefing say", "briefing for today", "yesterday briefing".',
+        input_schema: {
+          type: 'object',
+          properties: {
+            tenantId: { type: 'string' },
+            date: { type: 'string', description: 'Optional ISO date string to get briefing for a specific date. Omit for the most recent briefing.' }
+          },
+          required: ['tenantId']
+        }
+      },
+      {
+        name: 'trigger_morning_briefing',
+        description: 'Trigger an immediate morning briefing generation. Use when user asks to "generate my briefing now", "run my morning briefing", "create a briefing".',
+        input_schema: {
+          type: 'object',
+          properties: {
+            tenantId: { type: 'string' },
+            agentId: { type: 'string' }
+          },
+          required: ['tenantId', 'agentId']
+        }
+      },
+    );
+
     return tools;
   },
 
@@ -715,8 +755,9 @@ EMAIL TRIAGE:
         case 'get_emails_requiring_reply': result = await getEmailsRequiringReply(prisma, toolInput); break;
         case 'get_email_triage_summary': result = await getEmailTriageSummary(prisma, toolInput); break;
         case 'trigger_email_triage': result = await triggerEmailTriage(prisma, toolInput); break;
-        default: throw new Error(`Unknown tool: ${toolName}`);
-      }
+        case 'get_morning_briefing': result = await getMorningBriefing(prisma, toolInput); break;
+        case 'trigger_morning_briefing': result = await triggerMorningBriefing(toolInput); break;
+        default: throw new Error(`Unknown tool: ${toolName}`);      }
       success = true;
     } catch (err: any) {
       success = false;

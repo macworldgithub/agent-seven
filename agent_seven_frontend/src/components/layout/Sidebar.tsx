@@ -15,6 +15,7 @@ import {
   FolderOpen,
   Filter,
   Shield,
+  Sun,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
@@ -22,6 +23,7 @@ import { cn } from '../../lib/utils';
 const navMain = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
+  { name: 'Morning Briefing', href: '/briefing', icon: Sun },
   { name: 'Drive', href: '/drive', icon: FolderOpen },
   { name: 'Workspaces', href: '/workspaces', icon: Globe },
   { name: 'Memory', href: '/memory', icon: Brain },

@@ -20,7 +20,9 @@ import {
   CheckSquare,
   Clock,
   Plus,
+  Sun,
 } from 'lucide-react';
+import { useBriefing } from '../hooks/useBriefing';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -80,6 +82,7 @@ export function Dashboard() {
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
   const [isFreePlan, setIsFreePlan] = useState(false);
+  const { latestBriefing, status: briefingStatus, generating: briefingGenerating, triggerBriefing } = useBriefing();
 
   useEffect(() => {
     api.get('/memory/action-items?status=OPEN')
@@ -114,6 +117,95 @@ export function Dashboard() {
           </Button>
         </div>
       )}
+
+      {/* Morning Briefing Widget */}
+      <div
+        style={{
+          padding: '16px',
+          borderRadius: '16px',
+          border: '1px solid rgba(245,158,11,0.2)',
+          background: 'rgba(245,158,11,0.04)',
+          marginBottom: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(245,158,11,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Sun size={20} style={{ color: 'var(--color-warning)' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+                Morning Briefing
+              </p>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                {briefingStatus?.hasRunToday
+                  ? `Generated at ${briefingStatus.lastRanAt ? new Date(briefingStatus.lastRanAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : ''}`
+                  : briefingStatus?.isEnabled
+                  ? `Scheduled for ${briefingStatus.configuredTime}`
+                  : 'Not configured — enable in Settings'}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {briefingStatus?.hasRunToday ? (
+              <Button variant="secondary" size="sm" onClick={() => navigate('/briefing')}>
+                View Briefing
+              </Button>
+            ) : (
+              <Button variant="primary" size="sm" onClick={triggerBriefing} loading={briefingGenerating}>
+                <Zap size={12} style={{ marginRight: '4px' }} />
+                Generate Now
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Preview */}
+        {latestBriefing && briefingStatus?.hasRunToday && (
+          <div
+            style={{
+              marginTop: '14px',
+              paddingTop: '14px',
+              borderTop: '1px solid rgba(245,158,11,0.15)',
+            }}
+          >
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>
+              {latestBriefing.preview}
+            </p>
+            <button
+              onClick={() => navigate('/briefing')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontSize: '12px',
+                color: 'var(--color-warning)',
+                cursor: 'pointer',
+                marginTop: '8px',
+                textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+            >
+              Read full briefing →
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Header */}
       <div className="mb-6">

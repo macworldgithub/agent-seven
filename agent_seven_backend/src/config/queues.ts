@@ -1,11 +1,25 @@
-import { Queue } from 'bullmq'
-import { createRedisConnection } from './redis'
+import { Queue, Worker } from 'bullmq'
+import { env } from './env'
 import { logger } from '../utils/logger'
 
-// Each queue gets its own dedicated Redis connection (BullMQ requirement)
-export const agentQueue = new Queue('agent-jobs', { connection: createRedisConnection() })
-export const briefingQueue = new Queue('briefing-jobs', { connection: createRedisConnection() })
-export const schedulerQueue = new Queue('scheduler-jobs', { connection: createRedisConnection() })
+// BullMQ needs its own Redis connection config
+// DO NOT reuse the main redis client for BullMQ
+const bullMQConnection = {
+  host: new URL(env.REDIS_URL.replace('rediss://', 'https://').replace('redis://', 'http://')).hostname,
+  port: parseInt(new URL(env.REDIS_URL.replace('rediss://', 'https://').replace('redis://', 'http://')).port || '6379'),
+  password: new URL(env.REDIS_URL.replace('rediss://', 'https://').replace('redis://', 'http://')).password,
+  username: new URL(env.REDIS_URL.replace('rediss://', 'https://').replace('redis://', 'http://')).username || 'default',
+  tls: env.REDIS_URL.startsWith('rediss://') ? {} : undefined,
+  maxRetriesPerRequest: null,  // Required by BullMQ
+  enableOfflineQueue: true,
+  retryStrategy: (times: number) => Math.min(times * 500, 5000)
+}
+
+export const agentQueue = new Queue('agent-jobs', { connection: bullMQConnection })
+export const briefingQueue = new Queue('briefing-jobs', { connection: bullMQConnection })
+export const schedulerQueue = new Queue('scheduler-jobs', { connection: bullMQConnection })
+
+export { bullMQConnection }
 
 agentQueue.on('error', (err) => logger.error(`Agent queue error: ${err.message}`))
 briefingQueue.on('error', (err) => logger.error(`Briefing queue error: ${err.message}`))

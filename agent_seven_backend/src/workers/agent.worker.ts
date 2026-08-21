@@ -1,6 +1,5 @@
 import { Worker } from 'bullmq';
-import { createRedisConnection } from '../config/redis';
-import { AgentJobData } from '../config/queues';
+import { AgentJobData, bullMQConnection } from '../config/queues';
 import { agentService } from '../modules/agent/agent.service';
 import { prisma } from '../config/db';
 import { logger } from '../utils/logger';
@@ -31,7 +30,7 @@ export const agentWorker = new Worker<AgentJobData>(
     }
   },
   { 
-    connection: createRedisConnection(),
+    connection: bullMQConnection,
     concurrency: 10 
   }
 );

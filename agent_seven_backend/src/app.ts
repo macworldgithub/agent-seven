@@ -14,6 +14,7 @@ import driveRouter from './modules/drive/drive.routes';
 import triageRouter from './modules/triage/triage.routes';
 import healthRouter from './modules/health/health.routes';
 import tenantRouter from './modules/tenant/tenant.routes';
+import briefingRouter from './modules/briefing/briefing.routes';
 import { agentQueue, briefingQueue } from './config/queues';
 import path from 'path';
 
@@ -59,6 +60,7 @@ app.use('/api/drive', driveRouter);
 app.use('/api/triage', triageRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/tenant', tenantRouter);
+app.use('/api/briefing', briefingRouter);
 
 app.use(errorHandler);
 
