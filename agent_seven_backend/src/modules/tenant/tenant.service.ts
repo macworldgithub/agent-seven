@@ -162,12 +162,20 @@ export class TenantService {
       },
     });
 
+    // Determine specific audit action
+    let action = 'USER_STATUS_UPDATED';
+    if (typeof data.isOrgAdmin === 'boolean' && data.isOrgAdmin !== user.isOrgAdmin) {
+      action = data.isOrgAdmin ? 'MEMBER_PROMOTED' : 'MEMBER_DEMOTED';
+    } else if (typeof data.isActive === 'boolean' && data.isActive !== user.isActive) {
+      action = data.isActive ? 'MEMBER_ACTIVATED' : 'MEMBER_SUSPENDED';
+    }
+
     // Create Audit Log entry
     await prisma.auditLog.create({
       data: {
         tenantId,
         userId: user.id,
-        action: 'USER_STATUS_UPDATED',
+        action,
         resourceType: 'User',
         resourceId: userId,
         metaJson: JSON.stringify(data),
@@ -175,6 +183,42 @@ export class TenantService {
     });
 
     return updatedUser;
+  }
+
+  /**
+   * Delete a team member under the tenant
+   */
+  async deleteAdminUser(tenantId: string, userId: string, adminUserId: string) {
+    if (userId === adminUserId) {
+      throw new Error('You cannot delete your own account');
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { id: userId, tenantId },
+    });
+
+    if (!user) {
+      throw new Error('User not found in this tenant');
+    }
+
+    // Delete user (sessions and relations cascade)
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    // Create Audit Log entry
+    await prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: adminUserId,
+        action: 'MEMBER_DELETED',
+        resourceType: 'User',
+        resourceId: userId,
+        metaJson: JSON.stringify({ email: user.email, name: user.name }),
+      },
+    });
+
+    return { id: userId, email: user.email, name: user.name };
   }
 
   /**

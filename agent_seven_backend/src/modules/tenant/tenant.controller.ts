@@ -47,6 +47,17 @@ export class TenantController {
     }
   }
 
+  async deleteAdminUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.params.userId as string;
+      const adminUserId = req.user!.id;
+      const result = await tenantService.deleteAdminUser(req.tenantId!, userId, adminUserId);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getAdminWorkspaces(req: Request, res: Response, next: NextFunction) {
     try {
       const workspaces = await tenantService.getAdminWorkspaces(req.tenantId!);

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { WorkspaceService } from './workspace.service';
 import { WorkspaceProvider } from '@prisma/client';
 import { env } from '../../config/env';
+import { prisma } from '../../config/db';
 
 export class WorkspaceController {
   static async initiateGoogleOAuth(req: Request, res: Response, next: NextFunction) {
@@ -110,7 +111,15 @@ export class WorkspaceController {
   static async getWorkspaces(req: Request, res: Response, next: NextFunction) {
     try {
       const tenantId = req.user!.tenantId;
-      const workspaces = await WorkspaceService.getWorkspaces(tenantId);
+      const userId = req.user!.id;
+
+      // Fetch fresh user data from DB for workspace visibility filtering
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, isOrgAdmin: true, isActive: true },
+      });
+
+      const workspaces = await WorkspaceService.getWorkspaces(tenantId, currentUser || undefined);
       
       const safeWorkspaces = workspaces.map(WorkspaceController.formatWorkspaceForClient);
       

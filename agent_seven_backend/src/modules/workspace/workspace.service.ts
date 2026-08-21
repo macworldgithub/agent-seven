@@ -164,12 +164,19 @@ export class WorkspaceService {
     return workspace;
   }
 
-  static async getWorkspaces(tenantId: string) {
+  static async getWorkspaces(tenantId: string, user?: { email: string; isOrgAdmin: boolean; isActive: boolean }) {
+    const where: any = { 
+      tenantId,
+      status: { not: WorkspaceStatus.REVOKED }
+    };
+
+    // If user is not an active org admin, only show workspaces matching their email
+    if (user && !(user.isOrgAdmin && user.isActive)) {
+      where.providerEmail = { equals: user.email, mode: 'insensitive' };
+    }
+
     return prisma.workspace.findMany({
-      where: { 
-        tenantId,
-        status: { not: WorkspaceStatus.REVOKED }
-      },
+      where,
       orderBy: { createdAt: 'asc' },
     });
   }
