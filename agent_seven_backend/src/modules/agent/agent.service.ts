@@ -8,7 +8,7 @@ import { calendarListEvents, calendarGetEvent, calendarCreateEvent, calendarUpda
 import { driveListFiles, driveGetFile, driveCreateFolder, driveUploadFile, driveSearchFiles, docsCreateDocument, docsGetDocument, docsUpdateDocument, docsCreateFromTemplate, generateBrandedDocument, driveListImages, driveAnalyzeImage, driveExtractTextFromImage, driveAnalyzeWhiteboard } from '../../services/tools/drive.tools';
 import { slackListChannels, slackGetMessages, slackSendMessage, slackGetChannelImages, slackAnalyzeImage, slackSummarizeChannelImages } from '../../services/tools/slack.tools';
 import { memorySearch, memorySave, getActionItems, saveActionItem } from '../../services/tools/memory.tools';
-import { getUrgentEmails, getEmailsRequiringReply, getEmailTriageSummary, triggerEmailTriage, getWatchlistAlerts, addToWatchlist, getWatchlistItems } from '../../services/tools/triage.tools';
+import { getUrgentEmails, getEmailsRequiringReply, getEmailTriageSummary, triggerEmailTriage } from '../../services/tools/triage.tools';
 import { analyzeImageFromUrl } from '../../services/vision.service';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { memoryService } from '../memory/memory.service';
@@ -50,7 +50,6 @@ export const agentService = {
         morningBriefingTimezone: data.morningBriefingTimezone,
         driftDetectionEnabled: data.driftDetectionEnabled,
         replyTrackingEnabled: data.replyTrackingEnabled,
-        watchlistEnabled: data.watchlistEnabled,
       }
     });
   },
@@ -155,12 +154,10 @@ Output guidelines for vision results:
     }
 
     prompt += `
-EMAIL TRIAGE & WATCHLIST:
+EMAIL TRIAGE:
 - You have an email triage system that classifies emails by priority: URGENT, IMPORTANT, NORMAL, LOW, SPAM
 - When user asks "what needs my attention" or "urgent emails" → use get_urgent_emails tool
 - When user asks "what emails need replies" → use get_emails_requiring_reply tool
-- When user asks to "watch" someone or something → use add_to_watchlist tool
-- When user asks "any alerts" or "watchlist" → use get_watchlist_alerts tool
 - Always trigger triage when user asks about email priorities for fresh results
 - For urgent emails: always suggest drafting a reply or creating an action item
 - Triage uses: tenantId="${tenant.id}", agentId="${agent.id}"
@@ -660,54 +657,6 @@ EMAIL TRIAGE & WATCHLIST:
           required: ['tenantId', 'agentId']
         }
       },
-      {
-        name: 'get_watchlist_alerts',
-        description: 'Get recent watchlist matches and alerts',
-        input_schema: {
-          type: 'object',
-          properties: {
-            tenantId: { type: 'string' },
-            unreadOnly: { type: 'boolean', description: 'Only unread alerts (default true)' }
-          },
-          required: ['tenantId']
-        }
-      },
-      {
-        name: 'add_to_watchlist',
-        description: 'Add an email address, domain, or keyword to the watch-list to monitor',
-        input_schema: {
-          type: 'object',
-          properties: {
-            tenantId: { type: 'string' },
-            agentId: { type: 'string' },
-            type: { 
-              type: 'string', 
-              enum: ['EMAIL_ADDRESS', 'EMAIL_DOMAIN', 'KEYWORD', 'SLACK_USER', 'SLACK_KEYWORD'],
-              description: 'Type of watchlist item'
-            },
-            value: { type: 'string', description: 'The email, domain, or keyword to watch' },
-            label: { type: 'string', description: 'Friendly label for this watchlist item' },
-            alertLevel: { 
-              type: 'string', 
-              enum: ['CRITICAL', 'HIGH', 'NORMAL', 'LOW'],
-              description: 'Alert level when matched'
-            }
-          },
-          required: ['tenantId', 'agentId', 'type', 'value']
-        }
-      },
-      {
-        name: 'get_watchlist',
-        description: 'Get all watchlist items being monitored',
-        input_schema: {
-          type: 'object',
-          properties: {
-            tenantId: { type: 'string' },
-            agentId: { type: 'string' }
-          },
-          required: ['tenantId', 'agentId']
-        }
-      }
     );
 
     return tools;
@@ -766,9 +715,6 @@ EMAIL TRIAGE & WATCHLIST:
         case 'get_emails_requiring_reply': result = await getEmailsRequiringReply(prisma, toolInput); break;
         case 'get_email_triage_summary': result = await getEmailTriageSummary(prisma, toolInput); break;
         case 'trigger_email_triage': result = await triggerEmailTriage(prisma, toolInput); break;
-        case 'get_watchlist_alerts': result = await getWatchlistAlerts(prisma, toolInput); break;
-        case 'add_to_watchlist': result = await addToWatchlist(prisma, toolInput); break;
-        case 'get_watchlist': result = await getWatchlistItems(prisma, toolInput); break;
         default: throw new Error(`Unknown tool: ${toolName}`);
       }
       success = true;

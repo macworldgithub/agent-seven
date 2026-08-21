@@ -5,18 +5,6 @@ import {
   markEmailActedOn, 
   generateEmailReply 
 } from '../../services/emailClassification.service'
-import {
-  getWatchlistItems,
-  createWatchlistItem,
-  updateWatchlistItem,
-  deleteWatchlistItem,
-  toggleWatchlistItem,
-  getWatchlistMatches,
-  markMatchRead,
-  markAllMatchesRead,
-  getUnreadMatchCount
-} from '../../services/watchlist.service'
-import { triggerEmailTriage } from '../../services/tools/triage.tools'
 import { briefingQueue } from '../../config/queues'
 import { prisma } from '../../config/db'
 
@@ -104,74 +92,4 @@ export const draftReply = async (req: Request, res: Response) => {
   // Here we just pass an empty string as placeholder
   const reply = await generateEmailReply(tenantId, id, '')
   res.json({ success: true, data: { reply } })
-}
-
-// Watchlist endpoints
-export const getWatchlist = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const agent = await prisma.agent.findFirst({ where: { tenantId } })
-  if (!agent) return res.status(404).json({ success: false, error: 'Agent not found' })
-
-  const items = await getWatchlistItems(tenantId, agent.id)
-  res.json({ success: true, data: items })
-}
-
-export const addWatchlist = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const agent = await prisma.agent.findFirst({ where: { tenantId } })
-  if (!agent) return res.status(404).json({ success: false, error: 'Agent not found' })
-
-  const item = await createWatchlistItem(tenantId, agent.id, req.body)
-  res.json({ success: true, data: item })
-}
-
-export const updateWatchlist = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const id = req.params.id as string
-  const item = await updateWatchlistItem(id, tenantId, req.body)
-  res.json({ success: true, data: item })
-}
-
-export const deleteWatchlist = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const id = req.params.id as string
-  await deleteWatchlistItem(id, tenantId)
-  res.json({ success: true })
-}
-
-export const toggleWatchlist = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const id = req.params.id as string
-  const item = await toggleWatchlistItem(id, tenantId)
-  res.json({ success: true, data: item })
-}
-
-// Alerts
-export const getAlerts = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const { unreadOnly } = req.query
-  const filters = {
-    isRead: unreadOnly === 'true' ? false : undefined
-  }
-  const alerts = await getWatchlistMatches(tenantId, filters)
-  res.json({ success: true, data: alerts })
-}
-
-export const readAlert = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const id = req.params.id as string
-  await markMatchRead(id, tenantId)
-  res.json({ success: true })
-}
-
-export const readAllAlerts = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  await markAllMatchesRead(tenantId)
-  res.json({ success: true })
-}
-
-export const getAlertsCount = async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const count = await getUnreadMatchCount(tenantId)
-  res.json({ success: true, data: { count } })
 }

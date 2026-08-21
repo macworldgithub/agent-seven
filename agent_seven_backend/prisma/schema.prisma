@@ -101,8 +101,6 @@ model Tenant {
   messages      Message[]
   oauthStates   OAuthState[]
   emailClassifications  EmailClassification[]
-  watchlistItems        WatchlistItem[]
-  watchlistMatches      WatchlistMatch[]
 
   @@index([slug])
 }
@@ -201,7 +199,6 @@ model Agent {
   morningBriefingTimezone String      @default("Australia/Sydney")
   driftDetectionEnabled   Boolean     @default(false)
   replyTrackingEnabled    Boolean     @default(false)
-  watchlistEnabled        Boolean     @default(false)
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
 
@@ -210,7 +207,6 @@ model Agent {
   toolCalls     ToolCall[]
   memories      Memory[]
   actionItems   ActionItem[]
-  watchlistItems        WatchlistItem[]
 
   @@index([morningBriefingEnabled])
   @@index([tenantId])
@@ -382,56 +378,6 @@ model EmailClassification {
   @@index([classifiedAt])
 }
 
-model WatchlistItem {
-  id          String        @id @default(uuid())
-  tenantId    String
-  agentId     String
-  
-  type        WatchlistType
-  value       String        // email address, domain, or keyword
-  label       String?       // user-friendly label
-  description String?
-  
-  // Notification settings
-  notifyOnEmail   Boolean @default(true)
-  notifyOnSlack   Boolean @default(true)
-  alertLevel      AlertLevel @default(NORMAL)
-  
-  isActive    Boolean   @default(true)
-  lastMatchAt DateTime?
-  matchCount  Int       @default(0)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
-  agent       Agent     @relation(fields: [agentId], references: [id])
-  matches     WatchlistMatch[]
-  
-  @@index([tenantId, type])
-  @@index([tenantId, isActive])
-}
-
-model WatchlistMatch {
-  id              String      @id @default(uuid())
-  tenantId        String
-  watchlistItemId String
-  
-  source          String      // 'email' or 'slack'
-  sourceId        String      // messageId or threadId
-  matchedValue    String      // what was matched
-  context         String?     // snippet of matched content
-  
-  isRead          Boolean     @default(false)
-  createdAt       DateTime    @default(now())
-  
-  tenant          Tenant      @relation(fields: [tenantId], references: [id])
-  watchlistItem   WatchlistItem @relation(fields: [watchlistItemId], references: [id])
-  
-  @@index([tenantId, isRead])
-  @@index([watchlistItemId])
-}
-
 enum EmailPriority {
   URGENT
   IMPORTANT
@@ -448,19 +394,4 @@ enum EmailIntent {
   FYI
   NEWSLETTER
   SPAM
-}
-
-enum WatchlistType {
-  EMAIL_ADDRESS
-  EMAIL_DOMAIN
-  KEYWORD
-  SLACK_USER
-  SLACK_KEYWORD
-}
-
-enum AlertLevel {
-  CRITICAL
-  HIGH
-  NORMAL
-  LOW
 }

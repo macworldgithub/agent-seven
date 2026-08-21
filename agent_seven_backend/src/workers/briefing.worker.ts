@@ -8,7 +8,6 @@ import { llmService } from '../services/llm.service';
 import { WorkspaceService } from '../modules/workspace/workspace.service';
 import { gmailListThreads, gmailGetThread } from '../services/tools/gmail.tools';
 import { classifyEmailBatch } from '../services/emailClassification.service';
-import { checkEmailsAgainstWatchlist } from '../services/watchlist.service';
 
 export const briefingWorker = new Worker<BriefingJobData>(
   'briefing-jobs',
@@ -174,9 +173,6 @@ Summarise concisely. Flag urgent items. Format for voice delivery.`;
             const classifications = await classifyEmailBatch(tenantId, ws.id, emailsToClassify);
             logger.info(`Email triage: classified ${classifications.length} emails for workspace ${ws.name}`);
             
-            // Check against watchlist
-            const matches = await checkEmailsAgainstWatchlist(tenantId, emailsToClassify);
-            
             // Count for summary
             totalUrgent += classifications.filter(c => c.priority === 'URGENT').length;
             totalImportant += classifications.filter(c => c.priority === 'IMPORTANT').length;
@@ -197,19 +193,6 @@ Summarise concisely. Flag urgent items. Format for voice delivery.`;
               }
             }
 
-            // Create action items for Watchlist Matches
-            for (const match of matches) {
-              await prisma.actionItem.create({
-                data: {
-                  tenantId,
-                  agentId,
-                  title: `Watchlist Match: ${match.matchedValue}`,
-                  description: `Matched in email: ${match.context}`
-                }
-              }).catch((err: any) => {
-                logger.warn(`Could not create action item for watchlist match: ${err.message}`);
-              });
-            }
           } catch (err: any) {
             logger.error(`Email triage failed for workspace ${ws.id}: ${err.message}`);
           }
